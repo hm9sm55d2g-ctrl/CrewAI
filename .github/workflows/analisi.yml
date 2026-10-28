@@ -1,0 +1,52 @@
+name: CrewAI - controllo e analisi manuale
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check non usa API; analysis usa il provider a pagamento'
+        required: true
+        default: check
+        type: choice
+        options:
+          - check
+          - analysis
+permissions:
+  contents: read
+concurrency:
+  group: crewai-portafoglio-2027
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Installa dipendenze di controllo
+        run: python -m pip install PyYAML python-dotenv
+      - name: Installa CrewAI solo per analisi
+        if: inputs.mode == 'analysis'
+        run: python -m pip install -r requirements.txt
+      - name: Controllo senza API
+        if: inputs.mode == 'check'
+        run: python run.py --mode check
+      - name: Analisi con API
+        if: inputs.mode == 'analysis'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CREW_MODEL: ${{ vars.CREW_MODEL }}
+        run: python run.py --mode analysis
+      - name: Registra ambiente
+        run: python -m pip freeze > output/installed-versions.txt
+      - name: Salva risultati
+        uses: actions/upload-artifact@v4
+        with:
+          name: crewai-${{ inputs.mode }}-${{ github.run_id }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 7

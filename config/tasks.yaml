@@ -1,0 +1,45 @@
+validazione:
+  agent: dati
+  description: |
+    Mandato: {mandato}
+    Evidenze fornite: {evidenze}
+    Valida budget, date e fonti. Elenca dati mancanti e conflitti.
+    Non hai strumenti web: non fingere nuove acquisizioni.
+  expected_output: Registro delle evidenze, vincoli e lacune.
+tecnologia:
+  agent: tecnologia
+  description: |
+    Analizza AVGO, NVDA e AMZN soltanto sui materiali validati.
+    Per ciascuna: driver, cassa, valutazione se nota, tesi, controtesi e invalidazione.
+    Se mancano dati produci domande di ricerca, non fatti presunti.
+  expected_output: Tre schede preliminari con fonti o ND.
+materiali:
+  agent: materiali
+  description: |
+    Analizza Shin-Etsu. Distingui diversificazione industriale, geografica e finanziaria.
+    Il beneficio rispetto alla liquidita resta ND senza dati quantitativi.
+  expected_output: Scheda preliminare con tesi, controtesi e verifiche richieste.
+scenari:
+  agent: scenari
+  description: |
+    Formula H1 crescita AI con utili e cassa; H2 crescita e compressione multipli;
+    H10 shock combinato. Elenca variabili, assunzioni e condizioni di confutazione.
+    Non assegnare probabilita o prezzi iniziali 2027 inventati.
+    Nessun motore finanziario e collegato: non calcolare rendimenti o drawdown.
+  expected_output: Matrice qualitativa e input da approvare prima dei calcoli.
+revisione:
+  agent: rischi
+  description: |
+    Contesta dati futuri, numeri senza fonte, valute, costi, budget e concentrazione.
+    Classifica ogni criticita BLOCCANTE, IMPORTANTE o NOTA.
+    Distingui impossibilita quantitativa e semplice incertezza.
+  expected_output: Registro criticita con prova, impatto e correzione richiesta.
+report:
+  agent: report
+  description: |
+    Scrivi in italiano: sintesi, fonti, lacune, schede, scenari, confronto qualitativo
+    A/B/C e controlli, obiezioni e prossime verifiche.
+    Questa versione non acquisisce dati e non esegue calcoli finanziari.
+    Titola ANALISI PRELIMINARE NON VALIDATA e mantieni tutti i blocchi visibili.
+    Non dichiarare rendimenti, probabilita o idoneita personale.
+  expected_output: Report preliminare in Markdown, con limiti e nessuna raccomandazione operativa.
