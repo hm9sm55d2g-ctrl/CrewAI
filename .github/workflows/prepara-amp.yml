@@ -1,0 +1,39 @@
+name: Prepara dipendenze CrewAI AMP
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: prepara-amp-lock
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installa uv
+        run: python -m pip install uv
+      - name: Risolvi e blocca dipendenze
+        run: uv lock
+      - name: Installa progetto bloccato
+        run: uv sync --locked
+      - name: Controllo sintassi e caricamento senza API
+        run: |
+          uv run --locked python -m compileall -q src
+          uv run --locked python -c "from analisti_2027.crew import Analisti2027, project_inputs; project_inputs(); print('Import e input verificati; nessuna crew avviata')"
+      - name: Salva soltanto uv.lock nella repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add uv.lock
+          if ! git diff --cached --quiet; then
+            git commit -m 'Lock dependencies for CrewAI AMP'
+            git push origin HEAD:main
+          fi
