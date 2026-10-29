@@ -1,0 +1,10 @@
+Nessuna evidenza finanziaria verificata e ancora acquisita.
+Prezzi, cambi, consenso, bilanci, valutazioni e costi intermediario: ND.
+Il primo avvio serve a verificare mandato, lacune e struttura qualitativa.
+Non inventare dati o dichiarare fonti lette.
+Per aggiungere evidenze: ID, societa, metrica, valore, unita, valuta, periodo, data pubblicazione e fonte esatta.
+Riferimenti da consultare, NON gia acquisiti:
+https://investor.nvidia.com/
+https://investors.broadcom.com/
+https://ir.aboutamazon.com/
+https://www.shinetsu.co.jp/en/ir/ir-data/ir-annual/

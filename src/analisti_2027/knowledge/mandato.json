@@ -1,0 +1,32 @@
+{
+  "project": "Portafoglio 2027",
+  "information_cutoff": "2026-10-27",
+  "period": "Prima seduta eseguibile 2027 fino all'ultima entro 2027-12-31",
+  "capital_eur": 3000,
+  "portfolios": {
+    "A": {"AVGO": 750, "NVDA": 600, "AMZN": 600, "ShinEtsu": 450, "cash": 600},
+    "B": {"AVGO": 900, "NVDA": 750, "AMZN": 750, "ShinEtsu": 600, "cash": 0},
+    "C": {"AVGO": 600, "NVDA": 450, "AMZN": 450, "ShinEtsu": 300, "cash": 1200}
+  },
+  "controls": ["Per A/B/C sostituire solo ShinEtsu con liquidita", "3000 EUR liquidi, rendimento ipotetico 0%", "S&P 500 e Nasdaq-100 total return in EUR: confronti teorici distinti da ETF"],
+  "rules": [
+    "Budget azionari comprensivi dei costi di acquisto; mai superare 3000 EUR",
+    "Nessun versamento, leva, derivato o vendita allo scoperto",
+    "Separare riserva, tranche future e residui",
+    "Se non eseguibile per lotti, frazioni o costi, quota liquida",
+    "Nessun ordine, trasferimento o accesso operativo al broker",
+    "Prezzi iniziali e quantita 2027 sconosciuti nella versione congelata",
+    "I1 ingresso iniziale; I2 un terzo di ciascun budget a gennaio, febbraio e marzo; I3 liquidita",
+    "Baseline senza ribilanciamento; variante trimestrale solo successiva",
+    "Shin-Etsu Tokyo 4063 JPY: verificare strumento; non cuscinetto dimostrato",
+    "AVGO, NVDA, AMZN USD: verificare identita e disponibilita",
+    "Situazione fiscale, patrimonio e perdita accettabile sconosciuti",
+    "Imposte escluse salvo metodo esplicito; niente doppio conteggio costi",
+    "Valutazione finale senza vendita distinta da liquidazione con costi",
+    "E evidenza con fonte/data; A non verificato; H ipotesi; M sintetico; Q calcolo documentato; ND mancante",
+    "Ogni numero richiede fonte o H; nessuna probabilita dal consenso",
+    "Versione congelata: niente evidenze pubblicate dopo il limite informativo",
+    "Progetto indipendente dal 2026; budget tecnologico separato",
+    "Nessun calcolatore finanziario fornito: metriche quantitative ND"
+  ]
+}
