@@ -1,0 +1,55 @@
+name: Quality tests and installable package
+on:
+  push:
+    branches: [main, fix/report-completeness]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Install build tools only
+        run: python -m pip install build hatchling
+      - name: Build wheel without application dependencies
+        run: python -m build --wheel --no-isolation
+      - name: Inspect wheel resources
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          wheels = list(Path('dist').glob('*.whl'))
+          assert len(wheels) == 1, wheels
+          with ZipFile(wheels[0]) as wheel:
+              names = wheel.namelist()
+              assert len(names) == len(set(names)), 'Duplicate archive entries'
+              assert 'analisti_2027/quality.py' in names
+              for folder in ('config', 'knowledge'):
+                  for p in Path(folder).rglob('*'):
+                      if p.is_file():
+                          target = 'analisti_2027/' + p.as_posix()
+                          assert wheel.read(target) == p.read_bytes(), target
+          print('Wheel resources verified:', wheels[0].name)
+          PY
+      - name: Install wheel without application dependencies
+        run: python -m pip install --no-deps --target installed_package dist/*.whl
+      - name: Compile installed package without invoking CrewAI
+        run: python -m compileall -q installed_package/analisti_2027
+      - name: Save installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: analisti-2027-wheel-${{ github.sha }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 7
