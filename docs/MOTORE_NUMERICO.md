@@ -1,76 +1,76 @@
-# Motore numerico v0.1: scenari sintetici offline
+# Motore sintetico v0.2 - aggiornamento locale da revisionare
 
-Questo incremento non e una certificazione di correttezza finanziaria.
-Non e collegato agli agenti CrewAI, a un broker o a un servizio di quotazioni.
-Non modifica il mandato congelato o le istruzioni del report preliminare.
+Base GitHub: aa66181095e2df6c3c22068b2e8c2120689a6ac0.
+Questo pacchetto e un overlay di sei file, non un clone completo o un commit.
+Nessuna certificazione finanziaria, previsione, quotazione reale o ordine.
+Non modifica crew.py, config, mandato congelato, quality gate o workflow.
 
-## Esecuzione dei test
+## Correzioni
 
-Dalla radice del repository:
+Ricerca binaria sui lotti interi anziche riduzione lineare. La fattibilita include
+la commissione totale arrotondata verso l'alto al centesimo; il test controlla
+anche che un lotto aggiuntivo superi il budget. Limiti: 24 cifre significative ed
+esponente decimale fra -12 e 12 sugli input. Passo minimo 1e-12.
+Contesto Decimal esplicito indipendente dal chiamante: precisione 80,
+ROUND_HALF_EVEN e gestione delle eccezioni aritmetiche dichiarata nel codice.
+Zero ammesso nelle valorizzazioni; gli acquisti a zero non vengono eseguiti e
+non generano commissioni. I prezzi negativi restano rifiutati.
 
-```sh
-python -m unittest discover -s tests -p 'test_simulation.py' -v
+## Contratto numerico
+
+Capitale totale 3000 EUR, budget e riserva al centesimo; numeri stringa/interi
+(o Decimal), niente float o bool. Cambi EUR per unita di valuta quotata.
+Date ISO ordinate uniche del 2027; giorni eseguibili specificati dal chiamante,
+non ricavati da un calendario mercati. Prezzi sintetici non rettificati.
+Regole esplicite per strumento: quantity_step, fixed_fee_eur, commission_bps,
+fx_fee_bps, anche per costi nulli. Un basis point e 1/10000 del controvalore EUR.
+Costi inclusi nel budget. Quantita al passo inferiore, mai oltre la tranche.
+I1 ingresso iniziale; I2 terzi a gennaio/febbraio/marzo, resto dei centesimi
+nell'ultima tranche; I3 liquidita a rendimento ipotetico zero.
+Riserva, tranche future e residui distinti; residui non riutilizzati, niente
+ribilanciamento o vendite. Riconciliazione cassa/acquisti con tolleranza 1e-30 EUR.
+Rendimento e drawdown sono FRAZIONI, non percentuali. Drawdown solo sulle
+osservazioni fornite piu capitale pre-ingresso, non intraday. Una singola
+osservazione investita restituisce drawdown null.
+
+## Confronto A/B/C
+
+comparison.compare valida capitale, cutoff e struttura dei portafogli.
+Genera 6 casi base, 6 controlli senza Shin-Etsu e un unico cash_I3 condiviso.
+I controlli spostano soltanto il budget ShinEtsu nella riserva, senza
+redistribuirlo sugli altri titoli. Tutti i casi usano lo stesso percorso.
+Lo snapshot degli input e una copia indipendente. Nessuna classifica o probabilita.
+L'esempio JSON allegato contiene prezzi, cambi, date, costi e frazioni TUTTI
+sintetici: non condizioni del broker o dati acquisiti. I budget vengono dal mandato.
+
+Esempio dal repository con pacchetto installato o PYTHONPATH=src:
+
+```python
+import json
+from analisti_2027.comparison import compare
+x = json.load(open('examples/scenario_sintetico.json'))
+r = compare(x['mandate'], x['timeline'], x['entries'], x['rules'], data_kind=x['data_kind'])
 ```
 
-Il test importa il modulo direttamente, senza CrewAI o dipendenze applicative.
-La suite completa e eseguibile con il workflow quality esistente; questo commit
-non modifica i trigger del workflow e non avvia un deployment.
+## Collegamento CrewAI opzionale e separato
 
-## Contratto degli input
+synthetic_bridge.build_synthetic_crew riceve gli stessi input e un LLM esplicito.
+Costruisce una crew separata con un solo agente lettore, nessuno strumento o
+delega. NON integra i sei agenti preesistenti e NON chiama kickoff.
+Restituisce (crew, payload_numerico): il JSON deterministico e separato dal
+commento eventualmente prodotto dal modello. Il commento non e una fonte
+numerica validata e non ha un validatore semantico automatico.
+Import CrewAI differito alla costruzione reale. Nessuna chiamata LLM o AMP
+eseguita. I tre test del bridge usano componenti sostitutivi: NON provano la
+compatibilita runtime. Smoke test reale e verifica della narrativa restano aperti.
 
-- `data_kind` deve essere `synthetic`: nessun risultato reale o previsione.
-- `budgets`: dizionario strumento/importo EUR; `reserve`: liquidita EUR.
-- Capitale totale obbligatorio: 3000 EUR. Budget e riserva al centesimo.
-- Numeri come stringhe decimali o interi: float e bool rifiutati.
-- `timeline`: osservazioni ordinate con date ISO uniche del 2027 e `quotes`.
-- Ogni quotazione contiene `price` positivo e `eur_per_quote` positivo:
-  EUR per una unita di valuta quotata. Per un prezzo in EUR, usare 1.
-- Date di esecuzione esplicite presenti nelle osservazioni. Nessuna inferenza
-  su giorni di borsa, disponibilita o prezzo eseguibile.
-- I1: ingresso alla prima osservazione. I2: gennaio/febbraio/marzo, un terzo
-  del budget di ciascuno strumento; differenze di centesimi nell'ultima tranche.
-  I3: tutto liquido a rendimento ipotetico zero, senza date di acquisto.
-- Per ogni strumento con budget positivo servono `quantity_step`,
-  `fixed_fee_eur`, `commission_bps`, `fx_fee_bps`, anche quando pari a zero.
-  Un basis point e 1/10000. Queste sono ipotesi, non condizioni del broker.
+## Test e limiti
 
-## Metodo
+python -m unittest discover -s tests -p 'test_*.py' -v
 
-Decimal con precisione 40. Commissione = importo fisso per acquisto eseguito
-piu basis point sul controvalore EUR; costo cambio in basis point sullo stesso
-controvalore. Commissione totale arrotondata verso l'alto al centesimo.
-Quantita arrotondata verso il basso al passo configurato. Il costo complessivo
-non puo superare la tranche. Nessuna commissione su acquisti non eseguibili.
-I budget includono i costi: non sono importi netti da investire.
-
-Riserva, tranche future e residui restano separati. I residui non vengono
-riutilizzati negli acquisti successivi. Nessuna vendita o ribilanciamento.
-La riconciliazione verifica a ogni osservazione: cassa piu acquisti/costi
-cumulati uguale capitale iniziale, con tolleranza numerica assoluta 1e-30 EUR.
-Il valore di mercato non entra in questa identita di conservazione della cassa.
-Rendimento = valore finale / 3000 - 1, espresso come frazione, non percentuale.
-Drawdown: massima perdita relativa da un massimo precedente, includendo il
-capitale prima degli acquisti; solo sulle osservazioni disponibili, non intraday.
-Con una sola osservazione investita il drawdown resta ND (`null`).
-
-## Output e limiti
-
-Registro acquisti simulati, quantita, costi, residui, cassa e serie di valori EUR.
-`financially_validated` resta false; i test verificano casi sintetici, non verita
-finanziaria. `liquidation_value_eur` resta null: non vengono simulati costi di vendita.
-Imposte escluse. Nessun interesse maturato sulla liquidita.
-Dividendi, split, prezzi rettificati, benchmark total return e dati reali non
-supportati. Non utilizzare questo prototipo con prezzi rettificati come prezzi
-di esecuzione. Eventi aggiuntivi nelle osservazioni sono rifiutati.
-Nessuna verifica documentale di fonti o calendario mercati; nessuna probabilita.
-
-A/B/C possono essere passati separatamente come budget: manca ancora un
-orchestratore che legga il mandato, generi i controlli senza Shin-Etsu e produca
-una matrice comparativa. Mancano anche il collegamento CrewAI e un CLI.
-Sono incrementi successivi, non funzionalita gia disponibili.
-
-## Provenienza delle verifiche
-
-24 test del nuovo modulo eseguiti localmente nell'ambiente di sviluppo.
-Nessuna affermazione di esecuzione della suite completa o della CI remota.
-Necessaria revisione indipendente prima di impieghi diversi da prove sintetiche.
+64 test locali: 42 invariati, 10 regressioni, 9 confronto e 3 contratto bridge.
+Una regressione confronta 27 combinazioni con un calcolo indipendente Fraction;
+queste combinazioni non sono conteggiate come 27 test separati.
+Fonti reali, dividendi, split, liquidazione, imposte, benchmark total return,
+calendari mercati e previsioni non implementati. financially_validated=false.
+Nessuna build wheel, CI remota, deployment o esecuzione reale CrewAI effettuata.
