@@ -16,7 +16,11 @@ def check_resources(module):
     inputs = module.project_inputs()
     if json.loads(inputs["mandato"])["capital_eur"] != 3000 or not inputs["evidenze"].strip():
         raise RuntimeError("Invalid project inputs")
-    if not callable(module.check_output):
+    for name in ("bind_report", "prepare", "agent_context", "finish"):
+        if not callable(getattr(module, name, None)):
+            raise RuntimeError("Integration entry point not callable: " + name)
+    quality = importlib.import_module("analisti_2027.quality")
+    if not callable(getattr(quality, "check_output", None)):
         raise RuntimeError("Quality gate not callable")
 
 
@@ -45,7 +49,7 @@ def main():
     checkout = Path(__file__).resolve().parents[1]
     loose_import(checkout / "src/analisti_2027/crew.py", "amp_source_crew_smoke")
     print(json.dumps({"status": "passed", "python": sys.version.split()[0], "crewai": version("crewai"),
-                      "checks": ["installed_package_import", "installed_loose_import", "source_loose_import", "resources_and_inputs"],
+                      "checks": ["installed_package_import", "installed_loose_import", "source_loose_import", "resources_and_inputs", "integration_entry_points", "quality_gate_import"],
                       "kickoff_executed": False}, sort_keys=True))
 
 
