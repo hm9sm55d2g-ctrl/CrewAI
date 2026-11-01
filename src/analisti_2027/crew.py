@@ -4,7 +4,7 @@ from pathlib import Path
 
 from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, before_kickoff, after_kickoff, crew, task
-from .quality import check_output
+from analisti_2027.quality import check_output
 
 PACKAGE = Path(__file__).resolve().parent
 RESOURCE_ROOT = PACKAGE if (PACKAGE / "config/agents.yaml").is_file() else PACKAGE.parents[1]
