@@ -5,41 +5,85 @@ validazione:
     Evidenze fornite: {evidenze}
     Valida budget, date e fonti. Elenca dati mancanti e conflitti.
     Non hai strumenti web: non fingere nuove acquisizioni.
-  expected_output: Registro delle evidenze, vincoli e lacune.
+    Distingui dati forniti dal mandato da evidenze finanziarie verificate.
+    E richiede fonte esatta e data; A indica non verificato; H ipotesi;
+    M sintetico; Q calcolo documentato; ND mancante.
+    Un URL da consultare non e una fonte acquisita.
+    I prezzi iniziali 2027 sono intenzionalmente sconosciuti nella versione
+    congelata, non una lacuna da colmare con informazioni successive al cutoff.
+    Verifica separatamente le lacune USD/EUR e JPY/EUR.
+    Massimo 350 parole; non ricopiare integralmente il mandato.
+  expected_output: Registro sintetico di evidenze, vincoli e lacune con etichette.
 tecnologia:
   agent: tecnologia
   description: |
     Analizza AVGO, NVDA e AMZN soltanto sui materiali validati.
     Per ciascuna: driver, cassa, valutazione se nota, tesi, controtesi e invalidazione.
-    Se mancano dati produci domande di ricerca, non fatti presunti.
-  expected_output: Tre schede preliminari con fonti o ND.
+    Ogni fatto finanziario richiede evidenza E con fonte e data entro il cutoff.
+    Senza evidenze usa ND e domande di ricerca. Eventuali ipotesi devono
+    essere esplicitamente H e condizionali, mai previsioni assertive.
+    Non presentare conoscenze generali del modello come fatti verificati.
+    Non dichiarare che una societa crescera o beneficera senza evidenze.
+    Massimo 400 parole complessive.
+  expected_output: Tre schede concise con evidenze identificate oppure ND e domande.
 materiali:
   agent: materiali
   description: |
-    Analizza Shin-Etsu. Distingui diversificazione industriale, geografica e finanziaria.
+    Analizza Shin-Etsu soltanto sui materiali validati.
+    Distingui diversificazione industriale, geografica e finanziaria come
+    dimensioni da verificare, non come benefici gia dimostrati.
     Il beneficio rispetto alla liquidita resta ND senza dati quantitativi.
-  expected_output: Scheda preliminare con tesi, controtesi e verifiche richieste.
+    Ogni fatto richiede E con fonte e data; altrimenti ND o H condizionale.
+    Non attribuire stabilita o resilienza dimostrate senza evidenze.
+    Massimo 200 parole.
+  expected_output: Scheda concisa con evidenze o ND, ipotesi e verifiche richieste.
 scenari:
   agent: scenari
   description: |
     Formula H1 crescita AI con utili e cassa; H2 crescita e compressione multipli;
     H10 shock combinato. Elenca variabili, assunzioni e condizioni di confutazione.
+    Gli scenari sono H, non previsioni o fatti verificati.
     Non assegnare probabilita o prezzi iniziali 2027 inventati.
     Nessun motore finanziario e collegato: non calcolare rendimenti o drawdown.
-  expected_output: Matrice qualitativa e input da approvare prima dei calcoli.
+    Confronta qualitativamente A/B/C, controlli senza Shin-Etsu e liquidita,
+    distinguendo caratteristiche del mandato da benefici non dimostrati.
+    Considera I1/I2/I3 senza dichiarare una strategia vincente.
+    Massimo 350 parole.
+  expected_output: Matrice qualitativa sintetica, confronti e input mancanti.
 revisione:
   agent: rischi
   description: |
     Contesta dati futuri, numeri senza fonte, valute, costi, budget e concentrazione.
     Classifica ogni criticita BLOCCANTE, IMPORTANTE o NOTA.
     Distingui impossibilita quantitativa e semplice incertezza.
+    Riporta esempi precisi delle affermazioni non supportate dei task precedenti
+    e chiedi di sostituirle con ND o H esplicite, non con un disclaimer generico.
+    Controlla cutoff, USD/EUR e JPY/EUR, e distinzione fra fonti lette e riferimenti.
+    Massimo 300 parole.
   expected_output: Registro criticita con prova, impatto e correzione richiesta.
 report:
   agent: report
   description: |
-    Scrivi in italiano: sintesi, fonti, lacune, schede, scenari, confronto qualitativo
-    A/B/C e controlli, obiezioni e prossime verifiche.
-    Questa versione non acquisisce dati e non esegue calcoli finanziari.
-    Titola ANALISI PRELIMINARE NON VALIDATA e mantieni tutti i blocchi visibili.
-    Non dichiarare rendimenti, probabilita o idoneita personale.
-  expected_output: Report preliminare in Markdown, con limiti e nessuna raccomandazione operativa.
+    Scrivi un report sintetico in italiano usando tutti i cinque task precedenti.
+    Titola ANALISI PRELIMINARE NON VALIDATA.
+    Non concatenare o ricopiare integralmente gli output precedenti.
+    Massimo 800 parole complessive; riduci il dettaglio, non eliminare sezioni.
+    Includi esattamente queste nove sezioni di secondo livello:
+    1. Sintesi e stato della validazione
+    2. Evidenze acquisite e riferimenti da consultare
+    3. Vincoli e lacune
+    4. Schede AVGO, NVDA e AMZN
+    5. Scheda Shin-Etsu
+    6. Scenari H1, H2 e H10
+    7. Confronto A/B/C, controlli e I1/I2/I3
+    8. Obiezioni e criticita della revisione
+    9. Prossime verifiche
+    Ogni sezione deve contenere una sintesi o ND con motivo.
+    Integra le correzioni della revisione e segnala le criticita irrisolte.
+    Non conservare affermazioni assertive non supportate: sostituiscile con
+    ND o H esplicite e condizionali. Non inventare fonti o dati.
+    Se non ci sono evidenze acquisite scrivilo; separa gli URL da consultare.
+    Mantieni il cutoff del mandato. Nessuna acquisizione web o calcolo finanziario.
+    Non dichiarare rendimenti, probabilita, idoneita personale o raccomandazioni operative.
+    Termina con la riga FINE REPORT PRELIMINARE.
+  expected_output: Report Markdown sintetico con tutte le nove sezioni, etichette e riga finale.
