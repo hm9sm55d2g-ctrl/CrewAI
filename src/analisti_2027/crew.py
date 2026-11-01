@@ -4,8 +4,8 @@ from pathlib import Path
 
 from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, before_kickoff, after_kickoff, crew, task
-from analisti_2027.quality import check_output
 from analisti_2027.report_contract import bind_report
+from analisti_2027.integration import prepare, agent_context, task_config, finish
 
 PACKAGE = Path(__file__).resolve().parent
 RESOURCE_ROOT = PACKAGE if (PACKAGE / "config/agents.yaml").is_file() else PACKAGE.parents[1]
@@ -26,20 +26,29 @@ def project_inputs():
 
 @CrewBase
 class Analisti2027:
-    """Sei agenti in sola analisi qualitativa; nessuno strumento esterno."""
-
+    """Six qualitative agents with explicit, offline synthetic calculations."""
     agents_config = str(RESOURCE_ROOT / "config/agents.yaml")
     tasks_config = str(RESOURCE_ROOT / "config/tasks.yaml")
 
     @before_kickoff
     def prepare_inputs(self, inputs):
         prepared = dict(inputs or {})
+        self._integration_context = None
+        context = prepare(RESOURCE_ROOT, prepared.pop("scenario_bundle", None))
         prepared.update(project_inputs())
+        prepared["integration_context"] = agent_context(context)
+        self._integration_context = context
         return prepared
 
     @after_kickoff
     def validate_final_output(self, result):
-        return check_output(bind_report(result, RESOURCE_ROOT), RESOURCE_ROOT)
+        context = getattr(self, "_integration_context", None)
+        if context is None:
+            raise ValueError("MISSING_INTEGRATION_CONTEXT")
+        return finish(bind_report(result, RESOURCE_ROOT), context, RESOURCE_ROOT)
+
+    def _config(self, name):
+        return task_config(self.tasks_config[name], name)
 
     def _agent(self, name):
         model = os.getenv("CREW_MODEL", "").strip()
@@ -76,30 +85,29 @@ class Analisti2027:
 
     @task
     def validazione(self) -> Task:
-        return Task(config=self.tasks_config["validazione"])
+        return Task(config=self._config("validazione"))
 
     @task
     def analisi_tecnologia(self) -> Task:
-        return Task(config=self.tasks_config["tecnologia"], context=[self.validazione()])
+        return Task(config=self._config("tecnologia"), context=[self.validazione()])
 
     @task
     def analisi_materiali(self) -> Task:
-        return Task(config=self.tasks_config["materiali"], context=[self.validazione()])
+        return Task(config=self._config("materiali"), context=[self.validazione()])
 
     @task
     def analisi_scenari(self) -> Task:
-        return Task(config=self.tasks_config["scenari"], context=[
+        return Task(config=self._config("scenari"), context=[
             self.validazione(), self.analisi_tecnologia(), self.analisi_materiali()])
 
     @task
     def revisione(self) -> Task:
-        return Task(config=self.tasks_config["revisione"], context=[
-            self.validazione(), self.analisi_tecnologia(), self.analisi_materiali(),
-            self.analisi_scenari()])
+        return Task(config=self._config("revisione"), context=[
+            self.validazione(), self.analisi_tecnologia(), self.analisi_materiali(), self.analisi_scenari()])
 
     @task
     def report_finale(self) -> Task:
-        return Task(config=self.tasks_config["report"], context=[
+        return Task(config=self._config("report"), context=[
             self.validazione(), self.analisi_tecnologia(), self.analisi_materiali(),
             self.analisi_scenari(), self.revisione()])
 
