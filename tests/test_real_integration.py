@@ -1,0 +1,145 @@
+"""Real offline adapter/engine/binder/gate; synthetic report, no CrewAI kickoff."""
+import copy
+from decimal import Decimal
+import hashlib
+import json
+from pathlib import Path
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+with patch.object(sys, "path", [str(ROOT / "src"), *sys.path]):
+    from analisti_2027 import integration as i
+    from analisti_2027.quality import SECTIONS, END, audit
+    from analisti_2027.report_contract import bind_report, split_sections, contract_errors
+
+class RealIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "knowledge").mkdir()
+        self.mandate = json.loads((ROOT / "knowledge/mandato.json").read_text(encoding="utf-8"))
+        self.write_json("knowledge/mandato.json", self.mandate)
+        (self.root / "knowledge/evidenze.txt").write_text("Nessuna evidenza finanziaria reale acquisita.", encoding="utf-8")
+        self.bundle = json.loads((ROOT / "knowledge/scenario_bundle.example.json").read_text(encoding="utf-8"))
+        raw = "# ANALISI PRELIMINARE NON VALIDATA\n\n" + "\n\n".join("## " + s + "\nND: fixture sintetica, revisione necessaria." for s in SECTIONS) + "\n\n" + END
+        self.draft = SimpleNamespace(raw=raw, pydantic=None, json_dict=None,
+            tasks_output=[SimpleNamespace(raw=raw, pydantic=None, json_dict=None)])
+
+    def write_json(self, path, value):
+        (self.root / path).write_text(json.dumps(value), encoding="utf-8")
+
+    def execute(self, bundle):
+        context = i.prepare(self.root, bundle)
+        bound = bind_report(self.draft, self.root, self.root / "binding")
+        final = i.finish(bound, context, self.root, self.root / "integration")
+        return context, bound, final
+
+    def test_flat_path_thirteen_cases_and_final_table(self):
+        original = copy.deepcopy(self.bundle)
+        context, bound, final = self.execute(self.bundle)
+        cases = context["numeric_results"]["H1"]["cases"]
+        expected = {p + suffix + "_" + mode for p in "ABC" for suffix in ("", "_no_ShinEtsu") for mode in ("I1", "I2")} | {"cash_I3"}
+        self.assertEqual(set(cases), expected)
+        for name, case in cases.items():
+            with self.subTest(case=name):
+                self.assertEqual(Decimal(case["final_value_eur"]), Decimal(3000))
+                self.assertEqual(Decimal(case["return_fraction"]), 0)
+                self.assertEqual(Decimal(case["max_drawdown_fraction"]), 0)
+                self.assertEqual(Decimal(case["fees_eur"]), 0)
+        self.assertEqual(split_sections(final.raw)[5], i.summary(context))
+        for sid, payload in context["numeric_results"].items():
+            for name, c in payload["cases"].items():
+                row = "|" + "|".join([sid, name, c["final_value_eur"], c["return_fraction"], c["max_drawdown_fraction"], c["fees_eur"]]) + "|"
+                self.assertIn(row, final.raw)
+        self.assertEqual(contract_errors(final.raw, self.mandate), [])
+        self.assertTrue(audit(final.raw, self.mandate, [], self.root)["checks_passed"])
+        self.assertEqual(final.tasks_output[-1].raw, final.raw)
+        self.assertNotEqual(bound.raw, final.raw)
+        self.assertIn("fixture sintetica", self.draft.raw)
+        self.assertEqual(self.bundle, original)
+        files = list((self.root / "integration").glob("*.json"))
+        self.assertEqual(len(files), 1)
+        saved = json.loads(files[0].read_text(encoding="utf-8"))
+        self.assertEqual(saved["final_report"], final.raw)
+        self.assertEqual(saved["context"]["numeric_results"], context["numeric_results"])
+        self.assertFalse(saved["financially_validated"])
+
+    def test_three_scenarios_real_engine(self):
+        h1 = self.bundle["scenarios"]["H1"]
+        for sid in ("H2", "H10"):
+            self.bundle["scenarios"][sid] = copy.deepcopy(h1)
+        for q in self.bundle["scenarios"]["H2"]["timeline"][-1]["quotes"].values():
+            q["price"] = "200"
+        for q in self.bundle["scenarios"]["H10"]["timeline"][-1]["quotes"].values():
+            q["price"] = "50"
+        context, _, final = self.execute(self.bundle)
+        self.assertEqual(sum(len(p["cases"]) for p in context["numeric_results"].values()), 39)
+        self.assertGreater(Decimal(context["numeric_results"]["H2"]["cases"]["A_I1"]["return_fraction"]), 0)
+        shock = context["numeric_results"]["H10"]["cases"]["A_I1"]
+        self.assertLess(Decimal(shock["return_fraction"]), 0)
+        self.assertGreater(Decimal(shock["max_drawdown_fraction"]), 0)
+        self.assertEqual(split_sections(final.raw)[5], i.summary(context))
+        self.assertLessEqual(len(final.raw.split()), 800)
+
+    def test_real_fees_reduce_flat_value(self):
+        for r in self.bundle["scenarios"]["H1"]["rules"].values():
+            r["fixed_fee_eur"] = "1"
+        context, _, _ = self.execute(self.bundle)
+        case = context["numeric_results"]["H1"]["cases"]["A_I1"]
+        self.assertEqual(Decimal(case["fees_eur"]), 4)
+        self.assertEqual(Decimal(case["final_value_eur"]), 2996)
+        self.assertEqual(Decimal(context["numeric_results"]["H1"]["cases"]["cash_I3"]["final_value_eur"]), 3000)
+
+    def test_real_engine_rejects_missing_quote(self):
+        del self.bundle["scenarios"]["H1"]["timeline"][0]["quotes"]["NVDA"]
+        with self.assertRaisesRegex(ValueError, "Missing or unsupported quote"):
+            i.prepare(self.root, self.bundle)
+        self.assertFalse((self.root / "integration").exists())
+
+    def test_real_engine_rejects_wrong_i2_month(self):
+        self.bundle["scenarios"]["H1"]["entries"]["I2"][-1] = "2027-12-31"
+        with self.assertRaisesRegex(ValueError, "January, February, March"):
+            i.prepare(self.root, self.bundle)
+
+    def test_unconfigured_path_real_gates(self):
+        context, bound, final = self.execute(None)
+        self.assertEqual(context["status"], "not_configured")
+        self.assertEqual(context["numeric_results"], {})
+        self.assertEqual(bound.raw, final.raw)
+
+    def test_final_gate_rejects_oversize_report(self):
+        context = i.prepare(self.root, self.bundle)
+        bound = bind_report(self.draft, self.root, self.root / "binding")
+        bound.raw = bound.raw.replace("## Obiezioni e criticita della revisione", "## Obiezioni e criticita della revisione\n" + "parola " * 801)
+        with self.assertRaisesRegex(ValueError, "WORD_LIMIT_EXCEEDED"):
+            i.finish(bound, context, self.root, self.root / "integration")
+        self.assertFalse((self.root / "integration").exists())
+
+    def test_real_evidence_gate_cutoff_and_snapshot(self):
+        text = "SYNTHETIC TEST DOCUMENT: revenue 100 USD; not real evidence or human approval."
+        (self.root / "knowledge/source.txt").write_text(text, encoding="utf-8")
+        record = dict(id="TEST_ONLY", source_url="https://example.org/test-only", publication_date="2026-10-27",
+            snapshot_path="knowledge/source.txt", sha256=hashlib.sha256(text.encode()).hexdigest(), excerpt=text,
+            company="TEST_ONLY", metric="revenue", period="synthetic period", unit="units", currency="USD",
+            reviewer="Synthetic test identity, not a real reviewer", reviewed_on="2026-11-01", value="100", human_verified=True)
+        self.write_json("knowledge/evidence_registry.json", [record])
+        context, _, final = self.execute(self.bundle)
+        self.assertEqual(context["evidence_records"], [record])
+        self.assertTrue(audit(final.raw, self.mandate, [record], self.root)["checks_passed"])
+        record["publication_date"] = "2026-10-28"
+        self.write_json("knowledge/evidence_registry.json", [record])
+        with self.assertRaisesRegex(ValueError, "INVALID_EVIDENCE_RECORD"):
+            i.prepare(self.root, self.bundle)
+        record["publication_date"] = "2026-10-27"
+        self.write_json("knowledge/evidence_registry.json", [record])
+        (self.root / "knowledge/source.txt").write_text("tampered", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "INVALID_EVIDENCE_RECORD"):
+            i.prepare(self.root, self.bundle)
+
+if __name__ == "__main__":
+    unittest.main()
