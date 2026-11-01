@@ -12,6 +12,8 @@ validazione:
     I prezzi iniziali 2027 sono intenzionalmente sconosciuti nella versione
     congelata, non una lacuna da colmare con informazioni successive al cutoff.
     Verifica separatamente le lacune USD/EUR e JPY/EUR.
+    Ogni ricerca proposta deve rispettare il cutoff del mandato: non chiedere
+    dati attuali o futuri per riempire retroattivamente la versione congelata.
     Massimo 350 parole; non ricopiare integralmente il mandato.
   expected_output: Registro sintetico di evidenze, vincoli e lacune con etichette.
 tecnologia:
@@ -24,6 +26,9 @@ tecnologia:
     essere esplicitamente H e condizionali, mai previsioni assertive.
     Non presentare conoscenze generali del modello come fatti verificati.
     Non dichiarare che una societa crescera o beneficera senza evidenze.
+    Una frase assertiva seguita da ND non diventa verificata: se un driver
+    non e documentato, scrivi ND con motivo e una domanda di ricerca.
+    Formula le ipotesi come condizioni esplicite, non come fatti gia accertati.
     Massimo 400 parole complessive.
   expected_output: Tre schede concise con evidenze identificate oppure ND e domande.
 materiali:
@@ -33,6 +38,8 @@ materiali:
     Distingui diversificazione industriale, geografica e finanziaria come
     dimensioni da verificare, non come benefici gia dimostrati.
     Il beneficio rispetto alla liquidita resta ND senza dati quantitativi.
+    Il confronto riguarda detenere Shin-Etsu oppure sostituire il suo budget
+    con cassa nel portafoglio, non la sola liquidita finanziaria dell'azienda.
     Ogni fatto richiede E con fonte e data; altrimenti ND o H condizionale.
     Non attribuire stabilita o resilienza dimostrate senza evidenze.
     Massimo 200 parole.
@@ -47,7 +54,10 @@ scenari:
     Nessun motore finanziario e collegato: non calcolare rendimenti o drawdown.
     Confronta qualitativamente A/B/C, controlli senza Shin-Etsu e liquidita,
     distinguendo caratteristiche del mandato da benefici non dimostrati.
-    Considera I1/I2/I3 senza dichiarare una strategia vincente.
+    Distingui A, B e C usando soltanto i budget del mandato; nei controlli
+    trasferisci in cassa soltanto Shin-Etsu, senza redistribuire sugli altri titoli.
+    Descrivi I1 ingresso iniziale, I2 terzi a gennaio/febbraio/marzo e I3 cassa;
+    non dedurre benefici, rendimenti o probabilita da questi soli vincoli.
     Massimo 350 parole.
   expected_output: Matrice qualitativa sintetica, confronti e input mancanti.
 revisione:
@@ -59,6 +69,8 @@ revisione:
     Riporta esempi precisi delle affermazioni non supportate dei task precedenti
     e chiedi di sostituirle con ND o H esplicite, non con un disclaimer generico.
     Controlla cutoff, USD/EUR e JPY/EUR, e distinzione fra fonti lette e riferimenti.
+    Segnala link vuoti o con destinazione # e riferimenti mai acquisiti.
+    Contesta richieste di dati successivi al cutoff e driver assertivi marcati ND.
     Massimo 300 parole.
   expected_output: Registro criticita con prova, impatto e correzione richiesta.
 report:
@@ -83,7 +95,17 @@ report:
     Non conservare affermazioni assertive non supportate: sostituiscile con
     ND o H esplicite e condizionali. Non inventare fonti o dati.
     Se non ci sono evidenze acquisite scrivilo; separa gli URL da consultare.
+    Non inventare URL: usa soltanto indirizzi presenti nei materiali forniti,
+    come riferimenti da consultare; se assenti, scrivi ND senza creare link.
+    Vietati link segnaposto come [fonte](#), [fonte]() o URL inventati.
+    I prezzi iniziali 2027 sono intenzionalmente sconosciuti: non richiederli
+    come dati gia disponibili. Le ricerche devono rispettare il cutoff del mandato.
+    Nella sezione 7 distingui A/B/C, controlli senza Shin-Etsu e I1/I2/I3;
+    se non puoi valutarli scrivi ND con motivo per ciascun confronto.
+    Non presentare driver non verificati come fatti con una semplice etichetta ND.
     Mantieni il cutoff del mandato. Nessuna acquisizione web o calcolo finanziario.
     Non dichiarare rendimenti, probabilita, idoneita personale o raccomandazioni operative.
-    Termina con la riga FINE REPORT PRELIMINARE.
+    L'ultima riga deve essere esattamente il testo seguente, senza punto,
+    grassetto, virgolette o testo successivo:
+    FINE REPORT PRELIMINARE
   expected_output: Report Markdown sintetico con tutte le nove sezioni, etichette e riga finale.

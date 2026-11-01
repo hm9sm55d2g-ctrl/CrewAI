@@ -14,6 +14,17 @@ def norm(s):
     s = unicodedata.normalize("NFKD", s)
     return " ".join("".join(c for c in s if not unicodedata.combining(c)).split()).casefold()
 
+def has_placeholder_links(text):
+    """Reject empty/hash-only destinations, not a general Markdown or source verifier."""
+    targets = re.findall(r"\[[^\]\n]+\]\(([^)\n]*)\)", text)
+    targets += re.findall(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(.*)$", text, re.M)
+    targets += re.findall(r"""href\s*=\s*["']([^"']*)["']""", text, re.I)
+    for target in targets:
+        destination = target.strip().split()[0] if target.strip() else ""
+        if destination.strip("<>") in ("", "#"):
+            return True
+    return False
+
 def audit(report, mandate, records, resource_root):
     errors, warnings = [], []
     root = Path(resource_root).resolve()
@@ -74,17 +85,26 @@ def audit(report, mandate, records, resource_root):
     lines = text.strip().splitlines()
     if not lines or lines[0].strip() != "# ANALISI PRELIMINARE NON VALIDATA":
         errors.append("INVALID_REPORT_TITLE")
-    if not lines or lines[-1].strip() != END:
+    marker = lines[-1].strip() if lines else ""
+    marker_variant = "canonical" if marker == END else ("terminal_period" if marker == END + "." else "missing_or_invalid")
+    body_text = text
+    if marker_variant == "missing_or_invalid":
         errors.append("MISSING_END_MARKER")
+    else:
+        body_text = text.rstrip().rsplit("\n", 1)[0] if "\n" in text.rstrip() else ""
+        if marker_variant == "terminal_period":
+            warnings.append("END_MARKER_TERMINAL_PERIOD_ACCEPTED: original output unchanged")
+    if has_placeholder_links(text):
+        errors.append("PLACEHOLDER_LINK")
     words = len(text.split())
     if words > 800:
         errors.append("WORD_LIMIT_EXCEEDED")
-    heads = list(re.finditer(r"^##[ \t]+(.+)$", text, re.M))
+    heads = list(re.finditer(r"^##[ \t]+(.+)$", body_text, re.M))
     names = [norm(re.sub(r"^\d+[.)]\s*", "", m.group(1))) for m in heads]
     if names != [norm(s) for s in SECTIONS]:
         errors.append("SECTION_SET_OR_ORDER_INVALID")
     for i, h in enumerate(heads):
-        body = text[h.end():heads[i+1].start() if i+1 < len(heads) else len(text)].replace(END, "").strip()
+        body = body_text[h.end():heads[i+1].start() if i+1 < len(heads) else len(body_text)].strip()
         plain = re.sub(r"[\s#*_`>~|\-]+", "", body)
         if not plain or re.fullmatch(r"ND[.!]?", plain, re.I):
             errors.append("EMPTY_SECTION_OR_ND_WITHOUT_REASON")
@@ -96,6 +116,7 @@ def audit(report, mandate, records, resource_root):
     warnings.append("SEMANTIC_REVIEW_REQUIRED: budgets and source consistency do not establish truth, suitability or forecast quality")
     return {"checks_passed": not errors, "financially_validated": False,
             "word_count": words, "evidence_count": len(records),
+            "end_marker_variant": marker_variant, "report_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
             "errors": sorted(set(errors)), "warnings": warnings}
 
 def check_output(result, resource_root):
