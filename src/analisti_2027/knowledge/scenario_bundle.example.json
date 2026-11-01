@@ -1,0 +1,21 @@
+{
+  "data_kind": "synthetic",
+  "scenarios": {
+    "H1": {
+      "assumptions": "Fixture tecnica piatta, NON una previsione H1 economica: prezzi e cambi inventati e costanti, costi nulli e frazionabilita ipotetica per tutti i titoli. Non sono condizioni del broker.",
+      "timeline": [
+        {"date":"2027-01-04","quotes":{"AVGO":{"price":"100","eur_per_quote":"0.9"},"NVDA":{"price":"100","eur_per_quote":"0.9"},"AMZN":{"price":"100","eur_per_quote":"0.9"},"ShinEtsu":{"price":"100","eur_per_quote":"0.006"}}},
+        {"date":"2027-02-01","quotes":{"AVGO":{"price":"100","eur_per_quote":"0.9"},"NVDA":{"price":"100","eur_per_quote":"0.9"},"AMZN":{"price":"100","eur_per_quote":"0.9"},"ShinEtsu":{"price":"100","eur_per_quote":"0.006"}}},
+        {"date":"2027-03-01","quotes":{"AVGO":{"price":"100","eur_per_quote":"0.9"},"NVDA":{"price":"100","eur_per_quote":"0.9"},"AMZN":{"price":"100","eur_per_quote":"0.9"},"ShinEtsu":{"price":"100","eur_per_quote":"0.006"}}},
+        {"date":"2027-12-31","quotes":{"AVGO":{"price":"100","eur_per_quote":"0.9"},"NVDA":{"price":"100","eur_per_quote":"0.9"},"AMZN":{"price":"100","eur_per_quote":"0.9"},"ShinEtsu":{"price":"100","eur_per_quote":"0.006"}}}
+      ],
+      "entries":{"I1":["2027-01-04"],"I2":["2027-01-04","2027-02-01","2027-03-01"]},
+      "rules":{
+        "AVGO":{"quantity_step":"0.001","fixed_fee_eur":"0","commission_bps":"0","fx_fee_bps":"0"},
+        "NVDA":{"quantity_step":"0.001","fixed_fee_eur":"0","commission_bps":"0","fx_fee_bps":"0"},
+        "AMZN":{"quantity_step":"0.001","fixed_fee_eur":"0","commission_bps":"0","fx_fee_bps":"0"},
+        "ShinEtsu":{"quantity_step":"0.001","fixed_fee_eur":"0","commission_bps":"0","fx_fee_bps":"0"}
+      }
+    }
+  }
+}
