@@ -5,6 +5,7 @@ from pathlib import Path
 from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, before_kickoff, after_kickoff, crew, task
 from analisti_2027.quality import check_output
+from analisti_2027.report_contract import bind_report
 
 PACKAGE = Path(__file__).resolve().parent
 RESOURCE_ROOT = PACKAGE if (PACKAGE / "config/agents.yaml").is_file() else PACKAGE.parents[1]
@@ -38,7 +39,7 @@ class Analisti2027:
 
     @after_kickoff
     def validate_final_output(self, result):
-        return check_output(result, RESOURCE_ROOT)
+        return check_output(bind_report(result, RESOURCE_ROOT), RESOURCE_ROOT)
 
     def _agent(self, name):
         model = os.getenv("CREW_MODEL", "").strip()
