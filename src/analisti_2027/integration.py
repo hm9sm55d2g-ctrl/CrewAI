@@ -82,7 +82,8 @@ def summary(context):
     return "\n".join(rows)
 
 def task_config(config, name):
-    c = deepcopy(config)
+    # Only description is changed; preserve resolved agents and runtime clients.
+    c = dict(config)
     if name == "scenari":
         c["description"] = c["description"].replace("Nessun motore finanziario e collegato: non calcolare rendimenti o drawdown.", "Se ci sono risultati Q, commentali senza ricalcolarli; altrimenti rendimenti e drawdown ND.")
     if name == "report":
