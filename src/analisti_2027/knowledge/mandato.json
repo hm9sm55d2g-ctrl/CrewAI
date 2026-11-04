@@ -1,6 +1,7 @@
 {
   "project": "Portafoglio 2027",
-  "information_cutoff": "2026-10-27",
+  "information_start": "2026-10-27",
+  "temporal_policy": {"mode": "rolling", "start_inclusive": true, "end": "execution_date", "timezone": "UTC", "documents_date_field": "publication_date", "market_data_date_field": "observation_date"},
   "period": "Prima seduta eseguibile 2027 fino all'ultima entro 2027-12-31",
   "capital_eur": 3000,
   "portfolios": {
@@ -15,7 +16,7 @@
     "Separare riserva, tranche future e residui",
     "Se non eseguibile per lotti, frazioni o costi, quota liquida",
     "Nessun ordine, trasferimento o accesso operativo al broker",
-    "Prezzi iniziali e quantita 2027 sconosciuti nella versione congelata",
+    "Prezzi e quantita futuri 2027 sconosciuti: non inventarli; dati osservati ammessi solo entro la finestra temporale",
     "I1 ingresso iniziale; I2 un terzo di ciascun budget a gennaio, febbraio e marzo; I3 liquidita",
     "Baseline senza ribilanciamento; variante trimestrale solo successiva",
     "Shin-Etsu Tokyo 4063 JPY: verificare strumento; non cuscinetto dimostrato",
@@ -25,8 +26,11 @@
     "Valutazione finale senza vendita distinta da liquidazione con costi",
     "E evidenza con fonte/data; A non verificato; H ipotesi; M sintetico; Q calcolo documentato; ND mancante",
     "Ogni numero richiede fonte o H; nessuna probabilita dal consenso",
-    "Versione congelata: niente evidenze pubblicate dopo il limite informativo",
+    "Documenti pubblicati dal 2026-10-27 incluso fino alla data UTC di esecuzione; il periodo economico puo essere precedente",
+    "Prezzi e cambi: osservazioni dal 2026-10-27 incluso fino alla data UTC di esecuzione; nessun dato futuro",
+    "Registrare separatamente data di pubblicazione, periodo economico e acquisizione; conservare revisioni e versioni precedenti",
+    "La data finale deve essere risolta dal codice una volta per esecuzione e riportata nel dossier; se assente non presumere dati aggiornati",
     "Progetto indipendente dal 2026; budget tecnologico separato",
-    "Nessun calcolatore finanziario fornito: metriche quantitative ND"
+    "Rendimenti e drawdown solo dal motore deterministico con input documentati; fixture sintetiche non sono previsioni o dati di mercato"
   ]
 }
