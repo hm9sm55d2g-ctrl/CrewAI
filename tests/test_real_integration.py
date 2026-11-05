@@ -1,5 +1,6 @@
 """Real offline adapter/engine/binder/gate; synthetic report, no CrewAI kickoff."""
 import copy
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import hashlib
 import json
@@ -13,11 +14,25 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 with patch.object(sys, "path", [str(ROOT / "src"), *sys.path]):
     from analisti_2027 import integration as i
+    from analisti_2027 import quality as quality_module
     from analisti_2027.quality import SECTIONS, END, audit
     from analisti_2027.report_contract import bind_report, split_sections, contract_errors
 
+
+class FixedUTC(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        if tz is None:
+            raise AssertionError("UTC timezone required")
+        return datetime(2026, 11, 4, 12, tzinfo=timezone.utc).astimezone(tz)
+
+
 class RealIntegrationTests(unittest.TestCase):
     def setUp(self):
+        for module in (i, quality_module):
+            clock = patch.object(module, "datetime", FixedUTC)
+            clock.start()
+            self.addCleanup(clock.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -35,7 +50,7 @@ class RealIntegrationTests(unittest.TestCase):
 
     def execute(self, bundle):
         context = i.prepare(self.root, bundle)
-        bound = bind_report(self.draft, self.root, self.root / "binding")
+        bound = bind_report(self.draft, self.root, self.root / "binding", as_of=context["as_of"])
         final = i.finish(bound, context, self.root, self.root / "integration")
         return context, bound, final
 
@@ -53,11 +68,16 @@ class RealIntegrationTests(unittest.TestCase):
                 self.assertEqual(Decimal(case["fees_eur"]), 0)
         self.assertEqual(split_sections(final.raw)[5], i.summary(context))
         for sid, payload in context["numeric_results"].items():
+            self.assertEqual(payload["schema_version"], 2)
+            self.assertEqual(payload["information_start"], "2026-10-27")
+            self.assertEqual(payload["temporal_policy"], self.mandate["temporal_policy"])
+            self.assertNotIn("information_cutoff", payload)
             for name, c in payload["cases"].items():
                 row = "|" + "|".join([sid, name, c["final_value_eur"], c["return_fraction"], c["max_drawdown_fraction"], c["fees_eur"]]) + "|"
                 self.assertIn(row, final.raw)
-        self.assertEqual(contract_errors(final.raw, self.mandate), [])
-        self.assertTrue(audit(final.raw, self.mandate, [], self.root)["checks_passed"])
+        self.assertEqual(context["as_of"], "2026-11-04")
+        self.assertEqual(contract_errors(final.raw, self.mandate, as_of=context["as_of"]), [])
+        self.assertTrue(audit(final.raw, self.mandate, [], self.root, as_of=context["as_of"])["checks_passed"])
         self.assertEqual(final.tasks_output[-1].raw, final.raw)
         self.assertNotEqual(bound.raw, final.raw)
         self.assertIn("fixture sintetica", self.draft.raw)
@@ -114,13 +134,13 @@ class RealIntegrationTests(unittest.TestCase):
 
     def test_final_gate_rejects_oversize_report(self):
         context = i.prepare(self.root, self.bundle)
-        bound = bind_report(self.draft, self.root, self.root / "binding")
+        bound = bind_report(self.draft, self.root, self.root / "binding", as_of=context["as_of"])
         bound.raw = bound.raw.replace("## Obiezioni e criticita della revisione", "## Obiezioni e criticita della revisione\n" + "parola " * 801)
         with self.assertRaisesRegex(ValueError, "WORD_LIMIT_EXCEEDED"):
             i.finish(bound, context, self.root, self.root / "integration")
         self.assertFalse((self.root / "integration").exists())
 
-    def test_real_evidence_gate_cutoff_and_snapshot(self):
+    def test_real_evidence_gate_rolling_window_and_snapshot(self):
         text = "SYNTHETIC TEST DOCUMENT: revenue 100 USD; not real evidence or human approval."
         (self.root / "knowledge/source.txt").write_text(text, encoding="utf-8")
         record = dict(id="TEST_ONLY", source_url="https://example.org/test-only", publication_date="2026-10-27",
@@ -130,13 +150,27 @@ class RealIntegrationTests(unittest.TestCase):
         self.write_json("knowledge/evidence_registry.json", [record])
         context, _, final = self.execute(self.bundle)
         self.assertEqual(context["evidence_records"], [record])
-        self.assertTrue(audit(final.raw, self.mandate, [record], self.root)["checks_passed"])
+        self.assertTrue(audit(final.raw, self.mandate, [record], self.root, as_of=context["as_of"])["checks_passed"])
+        for publication in ("2026-10-28", context["as_of"]):
+            with self.subTest(accepted_publication=publication):
+                record["publication_date"] = publication
+                record["reviewed_on"] = context["as_of"]
+                self.write_json("knowledge/evidence_registry.json", [record])
+                accepted = i.prepare(self.root, self.bundle)
+                self.assertTrue(accepted["preflight"]["checks_passed"])
+                self.assertEqual(accepted["evidence_records"], [record])
+        future = (datetime.fromisoformat(context["as_of"]) + timedelta(days=1)).date().isoformat()
+        for publication in ("2026-10-26", future):
+            with self.subTest(rejected_publication=publication):
+                record["publication_date"] = publication
+                record["reviewed_on"] = publication
+                self.write_json("knowledge/evidence_registry.json", [record])
+                with self.assertRaisesRegex(ValueError, "INVALID_EVIDENCE_RECORD"):
+                    i.prepare(self.root, self.bundle)
         record["publication_date"] = "2026-10-28"
+        record["reviewed_on"] = context["as_of"]
         self.write_json("knowledge/evidence_registry.json", [record])
-        with self.assertRaisesRegex(ValueError, "INVALID_EVIDENCE_RECORD"):
-            i.prepare(self.root, self.bundle)
-        record["publication_date"] = "2026-10-27"
-        self.write_json("knowledge/evidence_registry.json", [record])
+        self.assertTrue(i.prepare(self.root, self.bundle)["preflight"]["checks_passed"])
         (self.root / "knowledge/source.txt").write_text("tampered", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "INVALID_EVIDENCE_RECORD"):
             i.prepare(self.root, self.bundle)
