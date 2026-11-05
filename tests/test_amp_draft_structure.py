@@ -124,11 +124,10 @@ class AmpDraftStructureTests(unittest.TestCase):
         self.assertEqual(saved["final_raw"], final.raw)
 
     def test_report_task_contains_literal_heading_skeleton(self):
-        import yaml
-        config = yaml.safe_load((support.ROOT / "config/tasks.yaml").read_text(encoding="utf-8"))
-        description = config["report"]["description"]
-        self.assertIn("# ANALISI PRELIMINARE NON VALIDATA", description.splitlines())
-        headings = re.findall(r"^## (.+)$", description, re.M)
+        text = (support.ROOT / "config/tasks.yaml").read_text(encoding="utf-8")
+        report_block = text.split("\nreport:\n", 1)[1]
+        self.assertIn("    # ANALISI PRELIMINARE NON VALIDATA", report_block.splitlines())
+        headings = re.findall(r"^    ## (.+)$", report_block, re.M)
         self.assertEqual(headings, list(quality.SECTIONS))
 
 

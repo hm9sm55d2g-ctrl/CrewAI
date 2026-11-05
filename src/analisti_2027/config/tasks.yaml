@@ -99,6 +99,33 @@ report:
     7. Confronto A/B/C, controlli e I1/I2/I3
     8. Obiezioni e criticita della revisione
     9. Prossime verifiche
+    Formato letterale obbligatorio: inizia direttamente con il titolo # qui sotto.
+    Non usare preamboli o recinzioni di codice. Non usare ### per il titolo
+    o #### per le sezioni. Usa esattamente le nove intestazioni ## indicate.
+    Non aggiungere altre intestazioni ##; eventuali sottosezioni usano ###.
+    Inserisci contenuto sotto ciascuna intestazione: lo scheletro non va
+    restituito vuoto. Conserva spazio per tutte le sezioni e per la chiusura.
+    # ANALISI PRELIMINARE NON VALIDATA
+
+    ## Sintesi e stato della validazione
+
+    ## Evidenze acquisite e riferimenti da consultare
+
+    ## Vincoli e lacune
+
+    ## Schede AVGO, NVDA e AMZN
+
+    ## Scheda Shin-Etsu
+
+    ## Scenari H1, H2 e H10
+
+    ## Confronto A/B/C, controlli e I1/I2/I3
+
+    ## Obiezioni e criticita della revisione
+
+    ## Prossime verifiche
+
+    FINE REPORT PRELIMINARE
     Ogni sezione contiene una sintesi o ND con motivo. Integra le correzioni
     della revisione e segnala criticita irrisolte.
     Nella sezione 1 indica inizio raccolta 2026-10-27 incluso e data finale
