@@ -92,6 +92,20 @@ def bind_report(result, resource_root, artifact_dir=None, *, as_of=None):
     draft = result.raw
     original_audit = audit(draft, mandate, records, root, as_of=as_of)
     if not original_audit["checks_passed"]:
+        directory = Path(artifact_dir) if artifact_dir is not None else Path("output/report_audits")
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / (uuid4().hex + ".json")
+        diagnostic = {"status": "draft_rejected", "draft_raw": draft,
+                      "draft_audit": original_audit, "final_raw": None,
+                      "final_audit": None, "temporal_window": window,
+                      "expected_title": "# ANALISI PRELIMINARE NON VALIDATA",
+                      "expected_sections": list(SECTIONS),
+                      "observed_headings": re.findall(r"^#{1,6}[ \t]+.*$", draft, re.M),
+                      "financially_validated": False, "semantic_review_required": True}
+        path.write_text(json.dumps(diagnostic, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("REPORT_BINDING_AUDIT " + json.dumps({"artifact": str(path),
+              "status": "draft_rejected", "errors": original_audit["errors"],
+              "financially_validated": False}))
         raise ValueError("DRAFT_STRUCTURE_FAILED: " + "; ".join(original_audit["errors"]))
     parts = split_sections(draft)
     changed = {1, 3, 7, 9}
