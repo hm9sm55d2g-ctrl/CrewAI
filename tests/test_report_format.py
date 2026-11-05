@@ -126,11 +126,27 @@ class ReportFormatTests(unittest.TestCase):
     def test_task_copies_identical(self):
         self.assertEqual((ROOT / "config/tasks.yaml").read_bytes(), (ROOT / "src/analisti_2027/config/tasks.yaml").read_bytes())
 
-    def test_prompt_marker_literal_and_cutoff(self):
-        text = (ROOT / "config/tasks.yaml").read_text()
+    def test_prompt_marker_and_placeholder_prohibition(self):
+        text = (ROOT / "config/tasks.yaml").read_text(encoding="utf-8")
         self.assertIn("    FINE REPORT PRELIMINARE\n", text)
-        self.assertIn("Vietati link segnaposto", text)
-        self.assertIn("Le ricerche devono rispettare il cutoff", text)
+        normalized = " ".join(text.split()).casefold()
+        self.assertIn("vietati link segnaposto", normalized)
+        self.assertIn("[fonte](#)", text)
+        self.assertIn("[fonte]()", text)
+
+    def test_prompt_rolling_window_and_date_semantics(self):
+        text = " ".join((ROOT / "config/tasks.yaml").read_text(encoding="utf-8").split()).casefold()
+        for required in (
+            "dal 2026-10-27 incluso",
+            "data utc risolta dal codice",
+            "documenti: filtra per pubblicazione, non per periodo economico",
+            "prezzi e cambi: filtra per data di osservazione",
+            "se manca la data finale, segnala nd e non dichiarare aggiornamento",
+            "non inventare la data finale e non dichiarare copertura completa senza prova",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, text)
+        self.assertNotIn("le ricerche devono rispettare il cutoff", text)
 
 if __name__ == "__main__":
     unittest.main()

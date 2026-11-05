@@ -5,42 +5,45 @@ validazione:
     Evidenze fornite: {evidenze}
     Valida budget, date e fonti. Elenca dati mancanti e conflitti.
     Non hai strumenti web: non fingere nuove acquisizioni.
-    Distingui dati forniti dal mandato da evidenze finanziarie verificate.
-    E richiede fonte esatta e data; A indica non verificato; H ipotesi;
-    M sintetico; Q calcolo documentato; ND mancante.
-    Un URL da consultare non e una fonte acquisita.
-    I prezzi iniziali 2027 sono intenzionalmente sconosciuti nella versione
-    congelata, non una lacuna da colmare con informazioni successive al cutoff.
-    Verifica separatamente le lacune USD/EUR e JPY/EUR.
-    Ogni ricerca proposta deve rispettare il cutoff del mandato: non chiedere
-    dati attuali o futuri per riempire retroattivamente la versione congelata.
+    Distingui mandato, evidenze verificate e riferimenti da consultare.
+    Solo record approvati sono E: citarli come [E:id]. E richiede fonte e data;
+    A non verificato; H ipotesi; M sintetico; Q calcolo documentato; ND mancante.
+    Finestra: dal 2026-10-27 incluso alla data UTC risolta dal codice per questa
+    esecuzione. Se manca la data finale, segnala ND e non dichiarare aggiornamento.
+    Documenti: filtra per pubblicazione, non per periodo economico.
+    Prezzi e cambi: filtra per data di osservazione; verifica anche disponibilita
+    della fonte entro il termine. Distingui pubblicazione, osservazione e acquisizione.
+    Non usare dati futuri o anteriori all'inizio come evidenze ammesse.
+    Prezzi futuri 2027 sconosciuti: non inventarli.
+    Verifica separatamente USD/EUR e JPY/EUR. Segnala revisioni e fonti mancanti.
     Massimo 350 parole; non ricopiare integralmente il mandato.
-  expected_output: Registro sintetico di evidenze, vincoli e lacune con etichette.
+  expected_output: Registro sintetico di evidenze, finestra temporale, vincoli e lacune.
 tecnologia:
   agent: tecnologia
   description: |
     Analizza AVGO, NVDA e AMZN soltanto sui materiali validati.
     Per ciascuna: driver, cassa, valutazione se nota, tesi, controtesi e invalidazione.
-    Ogni fatto finanziario richiede evidenza E con fonte e data entro il cutoff.
-    Senza evidenze usa ND e domande di ricerca. Eventuali ipotesi devono
-    essere esplicitamente H e condizionali, mai previsioni assertive.
-    Non presentare conoscenze generali del modello come fatti verificati.
-    Non dichiarare che una societa crescera o beneficera senza evidenze.
-    Una frase assertiva seguita da ND non diventa verificata: se un driver
-    non e documentato, scrivi ND con motivo e una domanda di ricerca.
-    Formula le ipotesi come condizioni esplicite, non come fatti gia accertati.
+    Ogni fatto finanziario richiede E con fonte e pubblicazione nella finestra
+    dal 2026-10-27 incluso alla data UTC di riferimento risolta nel dossier.
+    Il periodo economico puo precedere la pubblicazione: non confonderli.
+    Senza evidenze usa ND con motivo e domande di ricerca.
+    Ipotesi solo H esplicite e condizionali, mai previsioni assertive.
+    Non presentare conoscenze del modello come fatti verificati.
+    Non dichiarare crescita o benefici senza evidenze. Un'asserzione seguita
+    da ND non diventa verificata: sostituiscila con ND motivato o H condizionale.
     Massimo 400 parole complessive.
   expected_output: Tre schede concise con evidenze identificate oppure ND e domande.
 materiali:
   agent: materiali
   description: |
     Analizza Shin-Etsu soltanto sui materiali validati.
+    Ogni fatto richiede E nella finestra dal 2026-10-27 incluso alla data UTC
+    di riferimento del dossier; altrimenti ND con motivo o H condizionale.
     Distingui diversificazione industriale, geografica e finanziaria come
     dimensioni da verificare, non come benefici gia dimostrati.
     Il beneficio rispetto alla liquidita resta ND senza dati quantitativi.
-    Il confronto riguarda detenere Shin-Etsu oppure sostituire il suo budget
-    con cassa nel portafoglio, non la sola liquidita finanziaria dell'azienda.
-    Ogni fatto richiede E con fonte e data; altrimenti ND o H condizionale.
+    Confronta detenere Shin-Etsu o sostituire il suo budget con cassa nel
+    portafoglio, non la sola liquidita finanziaria dell'azienda.
     Non attribuire stabilita o resilienza dimostrate senza evidenze.
     Massimo 200 parole.
   expected_output: Scheda concisa con evidenze o ND, ipotesi e verifiche richieste.
@@ -50,27 +53,33 @@ scenari:
     Formula H1 crescita AI con utili e cassa; H2 crescita e compressione multipli;
     H10 shock combinato. Elenca variabili, assunzioni e condizioni di confutazione.
     Gli scenari sono H, non previsioni o fatti verificati.
-    Non assegnare probabilita o prezzi iniziali 2027 inventati.
-    Nessun motore finanziario e collegato: non calcolare rendimenti o drawdown.
-    Confronta qualitativamente A/B/C, controlli senza Shin-Etsu e liquidita,
-    distinguendo caratteristiche del mandato da benefici non dimostrati.
-    Distingui A, B e C usando soltanto i budget del mandato; nei controlli
-    trasferisci in cassa soltanto Shin-Etsu, senza redistribuire sugli altri titoli.
+    Non assegnare probabilita o prezzi futuri 2027 inventati.
+    Usa evidenze solo nella finestra temporale risolta del mandato.
+    Se ci sono risultati Q, commentali senza ricalcolarli; altrimenti rendimenti
+    e drawdown ND. Fixture tecniche sintetiche non rappresentano dati reali.
+    Confronta A/B/C, controlli senza Shin-Etsu e liquidita, distinguendo
+    caratteristiche del mandato da benefici non dimostrati.
+    Usa solo i budget del mandato; nei controlli trasferisci in cassa soltanto
+    Shin-Etsu, senza redistribuire sugli altri titoli.
     Descrivi I1 ingresso iniziale, I2 terzi a gennaio/febbraio/marzo e I3 cassa;
-    non dedurre benefici, rendimenti o probabilita da questi soli vincoli.
+    non dedurre benefici o rendimenti da questi soli vincoli.
     Massimo 350 parole.
-  expected_output: Matrice qualitativa sintetica, confronti e input mancanti.
+  expected_output: Matrice sintetica con ipotesi, eventuali Q, confronti e input mancanti.
 revisione:
   agent: rischi
   description: |
     Contesta dati futuri, numeri senza fonte, valute, costi, budget e concentrazione.
     Classifica ogni criticita BLOCCANTE, IMPORTANTE o NOTA.
     Distingui impossibilita quantitativa e semplice incertezza.
-    Riporta esempi precisi delle affermazioni non supportate dei task precedenti
-    e chiedi di sostituirle con ND o H esplicite, non con un disclaimer generico.
-    Controlla cutoff, USD/EUR e JPY/EUR, e distinzione fra fonti lette e riferimenti.
+    Riporta esempi precisi di affermazioni non supportate dei task precedenti
+    e chiedi ND motivato o H esplicite, non disclaimer generici.
+    Controlla inizio incluso 2026-10-27 e termine UTC risolto nel dossier.
+    Contesta pubblicazioni fuori finestra e osservazioni di mercato fuori
+    finestra; non escludere un bilancio per il solo periodo economico precedente.
+    Se manca il termine, segnala impossibilita di verificare l'aggiornamento.
+    Controlla USD/EUR, JPY/EUR, revisioni, fonti lette e riferimenti.
     Segnala link vuoti o con destinazione # e riferimenti mai acquisiti.
-    Contesta richieste di dati successivi al cutoff e driver assertivi marcati ND.
+    Contesta driver assertivi marcati ND e confusione tra fixture e dati reali.
     Massimo 300 parole.
   expected_output: Registro criticita con prova, impatto e correzione richiesta.
 report:
@@ -79,7 +88,7 @@ report:
     Scrivi un report sintetico in italiano usando tutti i cinque task precedenti.
     Titola ANALISI PRELIMINARE NON VALIDATA.
     Non concatenare o ricopiare integralmente gli output precedenti.
-    Massimo 800 parole complessive; riduci il dettaglio, non eliminare sezioni.
+    Massimo 800 parole complessive; riduci dettaglio, non eliminare sezioni.
     Includi esattamente queste nove sezioni di secondo livello:
     1. Sintesi e stato della validazione
     2. Evidenze acquisite e riferimenti da consultare
@@ -90,22 +99,23 @@ report:
     7. Confronto A/B/C, controlli e I1/I2/I3
     8. Obiezioni e criticita della revisione
     9. Prossime verifiche
-    Ogni sezione deve contenere una sintesi o ND con motivo.
-    Integra le correzioni della revisione e segnala le criticita irrisolte.
-    Non conservare affermazioni assertive non supportate: sostituiscile con
-    ND o H esplicite e condizionali. Non inventare fonti o dati.
-    Se non ci sono evidenze acquisite scrivilo; separa gli URL da consultare.
-    Non inventare URL: usa soltanto indirizzi presenti nei materiali forniti,
-    come riferimenti da consultare; se assenti, scrivi ND senza creare link.
-    Vietati link segnaposto come [fonte](#), [fonte]() o URL inventati.
-    I prezzi iniziali 2027 sono intenzionalmente sconosciuti: non richiederli
-    come dati gia disponibili. Le ricerche devono rispettare il cutoff del mandato.
+    Ogni sezione contiene una sintesi o ND con motivo. Integra le correzioni
+    della revisione e segnala criticita irrisolte.
+    Nella sezione 1 indica inizio raccolta 2026-10-27 incluso e data finale
+    UTC risolta nel dossier. Se assente scrivi ND: aggiornamento non verificabile.
+    Non inventare la data finale e non dichiarare copertura completa senza prova.
+    Distingui pubblicazione, periodo economico e acquisizione.
+    Sostituisci asserzioni non supportate con ND motivato o H condizionali.
+    Non inventare fonti, dati o URL. Se non ci sono evidenze acquisite, scrivilo.
+    Separa gli URL da consultare dalle fonti lette; usa solo indirizzi forniti.
+    Se assenti scrivi ND; vietati link segnaposto [fonte](#) o [fonte]().
+    Non richiedere prezzi futuri 2027 come dati disponibili.
     Nella sezione 7 distingui A/B/C, controlli senza Shin-Etsu e I1/I2/I3;
-    se non puoi valutarli scrivi ND con motivo per ciascun confronto.
-    Non presentare driver non verificati come fatti con una semplice etichetta ND.
-    Mantieni il cutoff del mandato. Nessuna acquisizione web o calcolo finanziario.
-    Non dichiarare rendimenti, probabilita, idoneita personale o raccomandazioni operative.
+    se non valutabili scrivi ND con motivo per ciascun confronto.
+    Nessuna acquisizione web; calcoli solo dal motore deterministico.
+    Non inventare rendimenti: usa solo Q documentati distinguendo sintetico e reale.
+    Non dichiarare probabilita, idoneita personale o raccomandazioni operative.
     L'ultima riga deve essere esattamente il testo seguente, senza punto,
     grassetto, virgolette o testo successivo:
     FINE REPORT PRELIMINARE
-  expected_output: Report Markdown sintetico con tutte le nove sezioni, etichette e riga finale.
+  expected_output: Report Markdown con nove sezioni, finestra temporale, etichette e riga finale.

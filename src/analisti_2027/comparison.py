@@ -4,15 +4,39 @@ from .simulation import simulate, number, numeric_context
 
 ASSETS = {"AVGO", "NVDA", "AMZN", "ShinEtsu", "cash"}
 
+
+def _temporal_metadata(mandate):
+    rolling = "information_start" in mandate or "temporal_policy" in mandate
+    if rolling:
+        expected = {"mode": "rolling", "start_inclusive": True,
+                    "end": "execution_date", "timezone": "UTC",
+                    "documents_date_field": "publication_date",
+                    "market_data_date_field": "observation_date"}
+        policy = mandate.get("temporal_policy")
+        if ("information_cutoff" in mandate
+                or mandate.get("information_start") != "2026-10-27"
+                or not isinstance(policy, dict)
+                or policy != expected
+                or policy.get("start_inclusive") is not True):
+            raise ValueError("Unexpected rolling mandate")
+        return {"schema_version": 2, "information_start": mandate["information_start"],
+                "temporal_policy": deepcopy(policy)}
+    if mandate.get("information_cutoff") != "2026-10-27":
+        raise ValueError("Unexpected frozen mandate")
+    return {"schema_version": 1, "information_cutoff": mandate["information_cutoff"]}
+
+
 def compare(mandate, timeline, entries, rules, *, data_kind):
     with numeric_context():
         return _compare(deepcopy(mandate), deepcopy(timeline), deepcopy(entries), deepcopy(rules), data_kind)
 
+
 def _compare(mandate, timeline, entries, rules, data_kind):
     if data_kind != "synthetic":
         raise ValueError("Only synthetic comparisons supported")
-    if mandate.get("information_cutoff") != "2026-10-27" or number(mandate.get("capital_eur")) != 3000:
-        raise ValueError("Unexpected frozen mandate")
+    if number(mandate.get("capital_eur")) != 3000:
+        raise ValueError("Unexpected mandate capital")
+    temporal = _temporal_metadata(mandate)
     portfolios = mandate.get("portfolios")
     if not isinstance(portfolios, dict) or set(portfolios) != {"A", "B", "C"}:
         raise ValueError("A/B/C are required")
@@ -35,8 +59,8 @@ def _compare(mandate, timeline, entries, rules, data_kind):
                 name = label + ("_no_ShinEtsu" if control else "") + "_" + mode
                 cases[name] = simulate(budget, reserve, timeline, entries[mode], mode, rules, data_kind=data_kind)
     cases["cash_I3"] = simulate({}, "3000", timeline, [], "I3", {}, data_kind=data_kind)
-    return {"schema_version": 1, "data_kind": "synthetic", "financially_validated": False,
-            "information_cutoff": mandate["information_cutoff"], "cases": cases,
+    return {**temporal, "data_kind": "synthetic", "financially_validated": False,
+            "cases": cases,
             "input_snapshot": {"mandate": mandate, "timeline": timeline, "entries": entries, "rules": rules},
             "benchmarks": "ND: total-return inputs and method not implemented",
             "limitations": ["No probabilities or recommendations", "No dividends, splits, liquidation costs or taxes", "Shared I3 is identical for A/B/C", "No actual 2027 prices or verified broker terms"]}

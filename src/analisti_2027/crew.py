@@ -45,7 +45,8 @@ class Analisti2027:
         context = getattr(self, "_integration_context", None)
         if context is None:
             raise ValueError("MISSING_INTEGRATION_CONTEXT")
-        return finish(bind_report(result, RESOURCE_ROOT), context, RESOURCE_ROOT)
+        bound = bind_report(result, RESOURCE_ROOT, as_of=context["as_of"])
+        return finish(bound, context, RESOURCE_ROOT)
 
     def _config(self, name):
         return task_config(self.tasks_config[name], name)
