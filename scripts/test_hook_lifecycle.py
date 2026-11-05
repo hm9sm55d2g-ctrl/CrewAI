@@ -72,8 +72,16 @@ def run_case(module, mode, rejected):
             instance = module.Analisti2027()
             built = instance.crew()
             assert len(built.agents) == 6 and len(built.tasks) == 6
-            assert len(built.before_kickoff_callbacks) == 1, 'BEFORE_HOOK_NOT_REGISTERED_ONCE'
-            assert len(built.after_kickoff_callbacks) == 1, 'AFTER_HOOK_NOT_REGISTERED_ONCE'
+            metadata = instance.__crew_metadata__
+            events.append({'stage': 'hook_registration',
+                           'before_methods': list(metadata['before_kickoff']),
+                           'after_methods': list(metadata['after_kickoff']),
+                           'before_callback_count': len(built.before_kickoff_callbacks),
+                           'after_callback_count': len(built.after_kickoff_callbacks)})
+            assert 'prepare_inputs' in metadata['before_kickoff'], 'APPLICATION_BEFORE_HOOK_NOT_DISCOVERED'
+            assert 'validate_final_output' in metadata['after_kickoff'], 'APPLICATION_AFTER_HOOK_NOT_DISCOVERED'
+            assert len(built.before_kickoff_callbacks) == len(metadata['before_kickoff']), 'BEFORE_CALLBACK_REGISTRATION_COUNT_MISMATCH'
+            assert len(built.after_kickoff_callbacks) == len(metadata['after_kickoff']), 'AFTER_CALLBACK_REGISTRATION_COUNT_MISMATCH'
             observed_error = None
             returned = None
             try:
