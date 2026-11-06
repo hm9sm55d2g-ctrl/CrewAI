@@ -54,6 +54,34 @@ class RealIntegrationTests(unittest.TestCase):
         final = i.finish(bound, context, self.root, self.root / "integration")
         return context, bound, final
 
+    def assert_finalization_stages(self, context, bound, final):
+        binding_files = list((self.root / "binding").glob("*.json"))
+        integration_files = list((self.root / "integration").glob("*.json"))
+        self.assertEqual(len(binding_files), 1)
+        self.assertEqual(len(integration_files), 1)
+        binding = json.loads(binding_files[0].read_text(encoding="utf-8"))
+        saved = json.loads(integration_files[0].read_text(encoding="utf-8"))
+        self.assertEqual(binding["draft_raw"], self.draft.raw)
+        self.assertEqual(binding["final_raw"], bound.raw)
+        self.assertEqual(saved["bound_report_before_numeric_table"], bound.raw)
+        self.assertEqual(saved["final_report"], final.raw)
+        self.assertEqual(saved["context"], context)
+        self.assertFalse(saved["financially_validated"])
+        before, after = split_sections(bound.raw), split_sections(final.raw)
+        self.assertEqual(len(before), 9)
+        self.assertEqual(len(after), 9)
+        for index in range(9):
+            if index != 5:
+                self.assertEqual(before[index], after[index])
+        self.assertEqual(after[5], i.summary(context))
+        self.assertEqual(final.tasks_output[-1].raw, final.raw)
+        self.assertEqual(bound.tasks_output[-1].raw, bound.raw)
+        self.assertEqual(self.draft.tasks_output[-1].raw, self.draft.raw)
+        self.assertIsNot(final, bound)
+        self.assertEqual(final.raw.splitlines()[-1], END)
+        outcome = audit(final.raw, self.mandate, context["evidence_records"], self.root, as_of=context["as_of"])
+        self.assertTrue(outcome["checks_passed"], outcome["errors"])
+
     def test_flat_path_thirteen_cases_and_final_table(self):
         original = copy.deepcopy(self.bundle)
         context, bound, final = self.execute(self.bundle)
@@ -127,10 +155,73 @@ class RealIntegrationTests(unittest.TestCase):
             i.prepare(self.root, self.bundle)
 
     def test_unconfigured_path_real_gates(self):
+        original = copy.deepcopy(self.draft)
         context, bound, final = self.execute(None)
         self.assertEqual(context["status"], "not_configured")
         self.assertEqual(context["numeric_results"], {})
-        self.assertEqual(bound.raw, final.raw)
+        self.assertNotEqual(bound.raw, final.raw)
+        self.assertEqual(self.draft, original)
+        self.assert_finalization_stages(context, bound, final)
+        section = split_sections(final.raw)[5]
+        for sid in ("H1", "H2", "H10"):
+            self.assertIn(f"- {sid}: ND: scenario non fornito nel bundle; nessun risultato numerico disponibile.", section)
+        self.assertIn("ND: simulazione numerica non configurata.", section)
+        self.assertNotIn("|Scenario|", section)
+
+    def test_single_scenario_discloses_assumptions_and_missing_ids(self):
+        original_bundle = copy.deepcopy(self.bundle)
+        original_draft = copy.deepcopy(self.draft)
+        context, bound, final = self.execute(self.bundle)
+        section = split_sections(final.raw)[5]
+        assumptions = " ".join(self.bundle["scenarios"]["H1"]["assumptions"].split())
+        self.assertIn(f"- H1: ipotesi fornite: {assumptions}", section)
+        self.assertNotIn("- H1: ND:", section)
+        for sid in ("H2", "H10"):
+            self.assertIn(f"- {sid}: ND: scenario non fornito nel bundle; nessun risultato numerico disponibile.", section)
+        self.assertIn("non dimostrano equivalenza economica, assenza di rischio o superiorita di una strategia.", section)
+        self.assertEqual(self.bundle, original_bundle)
+        self.assertEqual(self.draft, original_draft)
+        self.assert_finalization_stages(context, bound, final)
+
+    def test_three_scenarios_disclose_distinct_assumptions(self):
+        base = copy.deepcopy(self.bundle["scenarios"]["H1"])
+        for sid in ("H1", "H2", "H10"):
+            spec = copy.deepcopy(base)
+            spec["assumptions"] = f"Fixture sintetica {sid}: prezzi costanti, costi nulli; non una previsione."
+            self.bundle["scenarios"][sid] = spec
+        context, bound, final = self.execute(self.bundle)
+        section = split_sections(final.raw)[5]
+        for sid, spec in self.bundle["scenarios"].items():
+            self.assertIn(f"- {sid}: ipotesi fornite: {spec['assumptions']}", section)
+        self.assertNotIn("scenario non fornito", section)
+        self.assertEqual(sum(len(p["cases"]) for p in context["numeric_results"].values()), 39)
+        self.assert_finalization_stages(context, bound, final)
+
+    def test_summary_preserves_numeric_rows_and_context(self):
+        context = i.prepare(self.root, self.bundle)
+        original = copy.deepcopy(context)
+        first = i.summary(context)
+        self.assertEqual(i.summary(context), first)
+        self.assertEqual(context, original)
+        actual_rows = [line for line in first.splitlines() if line.startswith("|H")]
+        expected_rows = []
+        for sid, payload in context["numeric_results"].items():
+            for name, case in payload["cases"].items():
+                fields = [case[key] for key in ("final_value_eur", "return_fraction", "max_drawdown_fraction", "fees_eur")]
+                expected_rows.append("|" + "|".join([sid, name, *("ND" if value is None else str(value) for value in fields)]) + "|")
+        self.assertEqual(actual_rows, expected_rows)
+        self.assertEqual(len(actual_rows), 13)
+
+    def test_configured_scenario_without_results_discloses_gap(self):
+        context = i.prepare(self.root, self.bundle)
+        context["numeric_results"] = {}
+        original = copy.deepcopy(context)
+        text = i.summary(context)
+        self.assertIn("- H1: ipotesi fornite:", text)
+        self.assertIn("Risultati H1: ND: risultati numerici non disponibili nel contesto.", text)
+        self.assertNotIn("- H1: ND: scenario non fornito", text)
+        self.assertNotIn("|Scenario|", text)
+        self.assertEqual(context, original)
 
     def test_final_gate_rejects_oversize_report(self):
         context = i.prepare(self.root, self.bundle)
