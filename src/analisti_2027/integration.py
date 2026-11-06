@@ -85,11 +85,44 @@ def prepare(root, scenario_bundle=None, *, audit_fn=None, compare_fn=None):
     return result
 
 def summary(context):
+    bundle = context.get("scenario_bundle") or {}
+    specs = bundle.get("scenarios", {})
+    rows = [
+        "Scenari sintetici, non previsioni. Gli identificativi H1/H2/H10 "
+        "non definiscono da soli uno scenario economico: valgono "
+        "esclusivamente le ipotesi esplicite riportate sotto."
+    ]
+    for sid in ("H1", "H2", "H10"):
+        spec = specs.get(sid)
+        if spec is None:
+            rows.append(
+                f"- {sid}: ND: scenario non fornito nel bundle; "
+                "nessun risultato numerico disponibile."
+            )
+        else:
+            assumptions = " ".join(spec["assumptions"].split())
+            rows.append(f"- {sid}: ipotesi fornite: {assumptions}")
+            if sid not in context["numeric_results"]:
+                rows.append(
+                    f"  Risultati {sid}: ND: risultati numerici "
+                    "non disponibili nel contesto."
+                )
+    rows.append(
+        "I risultati descrivono esclusivamente gli input sintetici forniti. "
+        "Eventuali uguaglianze fra portafogli o controlli non dimostrano "
+        "equivalenza economica, assenza di rischio o superiorita "
+        "di una strategia."
+    )
     if not context["numeric_results"]:
-        return "ND: simulazione numerica non configurata; mancano ipotesi esplicite."
-    rows = ["Scenari sintetici, non previsioni. EUR; rendimenti e drawdown in frazioni (0.10 = 10%).",
-            "Drawdown limitato alle osservazioni fornite. Dividendi, split, imposte e costi di liquidazione esclusi.",
-            "|Scenario|Caso|Valore finale EUR|Rendimento|Drawdown|Costi EUR|", "|---|---|---:|---:|---:|---:|"]
+        rows.append("ND: simulazione numerica non configurata.")
+        return "\n".join(rows)
+    rows.extend([
+        "",
+        "EUR; rendimenti e drawdown in frazioni (0.10 = 10%).",
+        "Drawdown limitato alle osservazioni fornite. Dividendi, split, imposte e costi di liquidazione esclusi.",
+        "|Scenario|Caso|Valore finale EUR|Rendimento|Drawdown|Costi EUR|",
+        "|---|---|---:|---:|---:|---:|",
+    ])
     for sid, payload in context["numeric_results"].items():
         for name, case in payload["cases"].items():
             fields = [case[k] for k in ("final_value_eur", "return_fraction", "max_drawdown_fraction", "fees_eur")]
@@ -118,12 +151,11 @@ def finish(result, context, root, artifact_dir=None):
     from .report_contract import split_sections
     as_of = context["as_of"]
     returned = deepcopy(result)
-    if context["numeric_results"]:
-        parts = split_sections(returned.raw)
-        parts[5] = summary(context)
-        returned.raw = "# ANALISI PRELIMINARE NON VALIDATA\n\n" + "\n\n".join("## " + s + "\n" + p for s, p in zip(SECTIONS, parts)) + "\n\n" + END
-        if getattr(returned, "tasks_output", None):
-            returned.tasks_output[-1].raw = returned.raw
+    parts = split_sections(returned.raw)
+    parts[5] = summary(context)
+    returned.raw = "# ANALISI PRELIMINARE NON VALIDATA\n\n" + "\n\n".join("## " + s + "\n" + p for s, p in zip(SECTIONS, parts)) + "\n\n" + END
+    if getattr(returned, "tasks_output", None):
+        returned.tasks_output[-1].raw = returned.raw
     returned = check_output(returned, root, as_of=as_of)
     directory = Path(artifact_dir) if artifact_dir is not None else Path("output/integration_audits")
     directory.mkdir(parents=True, exist_ok=True)
