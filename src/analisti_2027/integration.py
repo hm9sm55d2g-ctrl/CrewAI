@@ -114,7 +114,10 @@ def summary(context):
         "di una strategia."
     )
     if not context["numeric_results"]:
-        rows.append("ND: simulazione numerica non configurata.")
+        rows.append(
+            "ND: risultati numerici non disponibili per gli scenari forniti."
+            if specs else "ND: simulazione numerica non configurata."
+        )
         return "\n".join(rows)
     rows.extend([
         "",
