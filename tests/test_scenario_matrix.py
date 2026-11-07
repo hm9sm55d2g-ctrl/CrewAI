@@ -158,8 +158,51 @@ def test_factory_independence(bundle_factory, workspace_factory):
     assert second["scenarios"]["H1"]["timeline"][0]["quotes"]["AVGO"]["price"] == "100"
     assert workspace_factory() != workspace_factory()
 
-def test_no_implicit_bundle(pipeline_factory):
-    run = pipeline_factory(None)
+def test_no_implicit_bundle(pipeline_factory, draft_factory):
+    draft = draft_factory()
+    original_draft = deepcopy(draft)
+
+    run = pipeline_factory(None, draft=draft)
+
     assert run.context["status"] == "not_configured"
     assert run.context["numeric_results"] == {}
-    assert run.final.raw == run.bound.raw
+
+    before = split_sections(run.bound.raw)
+    after = split_sections(run.final.raw)
+    assert len(before) == len(after) == 9
+    assert [index for index in range(9) if before[index] != after[index]] == [5]
+    assert after[5] == summary(run.context)
+    for sid in ("H1", "H2", "H10"):
+        assert (
+            f"- {sid}: ND: scenario non fornito nel bundle; "
+            "nessun risultato numerico disponibile."
+        ) in after[5]
+    assert "ND: simulazione numerica non configurata." in after[5]
+    assert "|Scenario|" not in after[5]
+
+    assert draft == original_draft
+    assert run.final is not run.bound
+    assert run.final.tasks_output[-1] is not run.bound.tasks_output[-1]
+    assert run.bound.tasks_output[-1].raw == run.bound.raw
+    assert run.final.tasks_output[-1].raw == run.final.raw
+    assert run.final.raw.splitlines()[-1] == END
+
+    assert contract_errors(run.final.raw, run.context["mandate"]) == []
+    outcome = audit(run.final.raw, run.context["mandate"], [], run.root)
+    assert outcome["checks_passed"], outcome["errors"]
+    assert outcome["financially_validated"] is False
+
+    binding_paths = list((run.root / "binding").glob("*.json"))
+    integration_paths = list((run.root / "integration").glob("*.json"))
+    assert len(binding_paths) == 1
+    assert len(integration_paths) == 1
+    binding = json.loads(binding_paths[0].read_text(encoding="utf-8"))
+    integration = json.loads(integration_paths[0].read_text(encoding="utf-8"))
+    assert binding["draft_raw"] == original_draft.raw
+    assert binding["final_raw"] == run.bound.raw
+    assert binding["final_audit"]["checks_passed"]
+    assert binding["financially_validated"] is False
+    assert integration["bound_report_before_numeric_table"] == run.bound.raw
+    assert integration["final_report"] == run.final.raw
+    assert integration["context"] == run.context
+    assert integration["financially_validated"] is False
