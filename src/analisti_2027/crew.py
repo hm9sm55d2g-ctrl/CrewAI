@@ -32,21 +32,35 @@ class Analisti2027:
 
     @before_kickoff
     def prepare_inputs(self, inputs):
-        prepared = dict(inputs or {})
-        self._integration_context = None
-        context = prepare(RESOURCE_ROOT, prepared.pop("scenario_bundle", None))
-        prepared.update(project_inputs())
-        prepared["integration_context"] = agent_context(context)
-        self._integration_context = context
-        return prepared
+        from threading import Lock
+        guard = self.__dict__.setdefault("_execution_guard", Lock())
+        if not guard.acquire(blocking=False):
+            raise ValueError("CONCURRENT_KICKOFF_NOT_SUPPORTED: use a separate crew instance per run; discard an instance whose tasks failed before finalization")
+        try:
+            prepared = dict(inputs or {})
+            self._integration_context = None
+            context = prepare(RESOURCE_ROOT, prepared.pop("scenario_bundle", None))
+            prepared.update(project_inputs())
+            prepared["integration_context"] = agent_context(context)
+            self._integration_context = context
+            return prepared
+        except BaseException:
+            self._integration_context = None
+            guard.release()
+            raise
 
     @after_kickoff
     def validate_final_output(self, result):
-        context = getattr(self, "_integration_context", None)
-        if context is None:
-            raise ValueError("MISSING_INTEGRATION_CONTEXT")
-        bound = bind_report(result, RESOURCE_ROOT, as_of=context["as_of"])
-        return finish(bound, context, RESOURCE_ROOT)
+        try:
+            context = getattr(self, "_integration_context", None)
+            if context is None:
+                raise ValueError("MISSING_INTEGRATION_CONTEXT")
+            bound = bind_report(result, RESOURCE_ROOT, as_of=context["as_of"])
+            return finish(bound, context, RESOURCE_ROOT)
+        finally:
+            guard = getattr(self, "_execution_guard", None)
+            if guard is not None and guard.locked():
+                guard.release()
 
     def _config(self, name):
         return task_config(self.tasks_config[name], name)
