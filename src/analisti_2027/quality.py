@@ -6,7 +6,7 @@ import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from .audit_logging import emit_audit
+from analisti_2027.audit_logging import emit_audit
 
 SECTIONS = ("Sintesi e stato della validazione", "Evidenze acquisite e riferimenti da consultare", "Vincoli e lacune", "Schede AVGO, NVDA e AMZN", "Scheda Shin-Etsu", "Scenari H1, H2 e H10", "Confronto A/B/C, controlli e I1/I2/I3", "Obiezioni e criticita della revisione", "Prossime verifiche")
 END = "FINE REPORT PRELIMINARE"
