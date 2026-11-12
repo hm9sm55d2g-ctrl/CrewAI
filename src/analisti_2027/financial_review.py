@@ -113,6 +113,6 @@ def review_status(report, evidence, scenarios, approval, *, as_of):
         raise ValueError("FUTURE_REFERENCE_DATE")
     if approval is None:
         return dict(subject, financial_review_status="pending")
-    earliest = max([_day(r["reviewed_on"]) for r in evidence] + [latest])
+    earliest = max((_day(r["reviewed_on"]) for r in evidence), default=latest)
     _approval(approval, digest(subject), earliest, latest)
     return dict(subject, financial_review_status="attested", reviewer=approval["reviewer"], reviewed_on=approval["reviewed_on"])
