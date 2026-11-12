@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 from uuid import uuid4
 from analisti_2027.quality import SECTIONS, END, audit, evidence_window
+from .audit_logging import emit_audit
 
 ASSETS = ("AVGO", "NVDA", "AMZN", "ShinEtsu", "cash")
 
@@ -103,9 +104,9 @@ def bind_report(result, resource_root, artifact_dir=None, *, as_of=None):
                       "observed_headings": re.findall(r"^#{1,6}[ \t]+.*$", draft, re.M),
                       "financially_validated": False, "semantic_review_required": True}
         path.write_text(json.dumps(diagnostic, ensure_ascii=False, indent=2), encoding="utf-8")
-        print("REPORT_BINDING_AUDIT " + json.dumps({"artifact": str(path),
+        emit_audit("REPORT_BINDING_AUDIT", {"artifact": str(path),
               "status": "draft_rejected", "errors": original_audit["errors"],
-              "financially_validated": False}))
+              "financially_validated": False})
         raise ValueError("DRAFT_STRUCTURE_FAILED: " + "; ".join(original_audit["errors"]))
     parts = split_sections(draft)
     changed = {1, 3, 7, 9}
@@ -141,5 +142,5 @@ def bind_report(result, resource_root, artifact_dir=None, *, as_of=None):
               "temporal_window": window, "replaced_sections": sorted(changed), "mandate_sha256": hashlib.sha256(json.dumps(mandate, sort_keys=True).encode()).hexdigest(),
               "financially_validated": False, "semantic_review_required": True}
     path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("REPORT_BINDING_AUDIT " + json.dumps({"artifact": str(path), "replaced_sections": sorted(changed), "financially_validated": False}))
+    emit_audit("REPORT_BINDING_AUDIT", {"artifact": str(path), "replaced_sections": sorted(changed), "financially_validated": False})
     return returned

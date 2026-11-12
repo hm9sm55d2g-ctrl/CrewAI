@@ -6,6 +6,7 @@ import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from analisti_2027.audit_logging import emit_audit
 
 SECTIONS = ("Sintesi e stato della validazione", "Evidenze acquisite e riferimenti da consultare", "Vincoli e lacune", "Schede AVGO, NVDA e AMZN", "Scheda Shin-Etsu", "Scenari H1, H2 e H10", "Confronto A/B/C, controlli e I1/I2/I3", "Obiezioni e criticita della revisione", "Prossime verifiche")
 END = "FINE REPORT PRELIMINARE"
@@ -162,7 +163,7 @@ def check_output(result, resource_root, *, as_of=None):
     register = root / "knowledge/evidence_registry.json"
     records = json.loads(register.read_text(encoding="utf-8")) if register.exists() else []
     outcome = audit(result.raw, mandate, records, root, as_of=as_of)
-    print("QUALITY_AUDIT " + json.dumps(outcome, ensure_ascii=False))
+    emit_audit("QUALITY_AUDIT", outcome)
     if not outcome["checks_passed"]:
         raise ValueError("QUALITY_GATE_FAILED: " + "; ".join(outcome["errors"]))
     return result
