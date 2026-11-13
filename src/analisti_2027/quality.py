@@ -112,10 +112,15 @@ def audit(report, mandate, records, resource_root, *, as_of=None):
             for field in ("company", "metric", "period", "unit", "currency", "reviewer", "reviewed_on"):
                 if not isinstance(record[field], str) or not record[field].strip():
                     raise ValueError(field)
-            if not Decimal(str(record["value"])).is_finite() or record.get("human_verified") is not True:
-                raise ValueError("value or human review")
+            if isinstance(record["value"], bool) or not Decimal(str(record["value"])).is_finite():
+                raise ValueError("value")
+            if record.get("review_status") == "automated_verified":
+                from .review_integration import validate_automated_record
+                validate_automated_record(record, root, as_of=window["end"])
+            elif record.get("human_verified") is not True or "verification" in record:
+                raise ValueError("review provenance")
             ids.add(eid)
-        except (KeyError, TypeError, ValueError, OSError, InvalidOperation, UnicodeError):
+        except (KeyError, TypeError, ValueError, OSError, InvalidOperation, UnicodeError, AttributeError):
             errors.append("INVALID_EVIDENCE_RECORD")
     if not records:
         warnings.append("NO_VERIFIED_EVIDENCE: preliminary analysis only")
