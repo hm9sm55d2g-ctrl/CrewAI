@@ -35,6 +35,10 @@ def verify_candidate(candidate, snapshot_text, publisher_text, *, publication_da
     are supported. Ambiguous or changed wording fails closed.
     """
     c = deepcopy(candidate)
+    if c.get("company") == "NVDA":
+        from .profile_verifier import verify_profile_candidate
+        return verify_profile_candidate(c, snapshot_text, publisher_text,
+            publication_date=publication_date, reviewed_on=reviewed_on, as_of=as_of)
     if c.get("human_verified") is not False or c.get("reviewer") is not None or c.get("reviewed_on") is not None:
         raise ValueError("CANDIDATE_REVIEW_STATE_REQUIRED")
     if c.get("source_url") != SOURCE_URL or c.get("company") != "AMZN" or c.get("record_type") != "document":
