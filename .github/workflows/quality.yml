@@ -1,7 +1,7 @@
 name: Quality tests and installable package
 on:
   push:
-    branches: [main, fix/report-completeness, fix/amp-absolute-import, ci/pytest-scenario-matrix]
+    branches: [main, fix/report-completeness, fix/amp-absolute-import, ci/pytest-scenario-matrix, feat/autonomous-evidence-pipeline]
   pull_request:
   workflow_dispatch:
 permissions:
