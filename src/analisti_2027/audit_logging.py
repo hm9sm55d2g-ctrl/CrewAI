@@ -3,7 +3,7 @@ import json
 import logging
 
 LOGGER = logging.getLogger("analisti_2027.audit")
-MARKERS = frozenset(("QUALITY_AUDIT", "REPORT_BINDING_AUDIT", "INTEGRATION_AUDIT"))
+MARKERS = frozenset(("QUALITY_AUDIT", "REPORT_BINDING_AUDIT", "INTEGRATION_AUDIT", "FINANCIAL_REVIEW_AUDIT"))
 
 
 def emit_audit(marker, payload):
