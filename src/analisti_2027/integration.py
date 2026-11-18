@@ -161,11 +161,15 @@ def finish(result, context, root, artifact_dir=None):
     if getattr(returned, "tasks_output", None):
         returned.tasks_output[-1].raw = returned.raw
     returned = check_output(returned, root, as_of=as_of)
+    from .review_integration import final_review_summary
+    review = final_review_summary(returned.raw, context, root)
     directory = Path(artifact_dir) if artifact_dir is not None else Path("output/integration_audits")
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / (uuid4().hex + ".json")
     record = {"context": context, "bound_report_before_numeric_table": result.raw,
-              "final_report": returned.raw, "financially_validated": False}
+              "final_report": returned.raw, "financially_validated": False,
+              "financial_review": review}
     path.write_text(encoded(record), encoding="utf-8")
+    emit_audit("FINANCIAL_REVIEW_AUDIT", dict(review, artifact=str(path)))
     emit_audit("INTEGRATION_AUDIT", {"artifact": str(path), "status": context["status"], "input_sha256": context["input_sha256"]})
     return returned

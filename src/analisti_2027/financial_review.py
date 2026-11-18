@@ -87,7 +87,7 @@ def promotion_plan(candidates, approvals, snapshots, existing, *, start, as_of):
     return files
 
 
-def review_subject(report, evidence, scenarios):
+def review_subject(report, evidence, scenarios, *, resource_root=None, as_of=None):
     """Bind review to exact report bytes and full evidence/scenario metadata."""
     if not isinstance(report, str) or not report:
         raise ValueError("REPORT_REQUIRED")
@@ -98,7 +98,12 @@ def review_subject(report, evidence, scenarios):
     for record in evidence:
         if record.get("record_type", "document") not in ("document", "price", "fx"):
             raise ValueError("OBSERVED_EVIDENCE_TYPE_REQUIRED")
-        if record.get("human_verified") is not True:
+        if record.get("review_status") == "automated_verified":
+            if resource_root is None or as_of is None:
+                raise ValueError("AUTOMATED_REVIEW_RESOURCES_REQUIRED")
+            from .review_integration import validate_automated_record
+            validate_automated_record(record, resource_root, as_of=as_of)
+        elif record.get("human_verified") is not True or "verification" in record:
             raise ValueError("UNREVIEWED_EVIDENCE")
     return {"report_sha256": hashlib.sha256(report.encode("utf-8")).hexdigest(),
             "evidence_sha256": digest(evidence), "scenario_sha256": digest(scenarios),
@@ -106,8 +111,8 @@ def review_subject(report, evidence, scenarios):
             "scenario_data_kind": "synthetic", "financially_validated": False}
 
 
-def review_status(report, evidence, scenarios, approval, *, as_of):
-    subject = review_subject(report, evidence, scenarios)
+def review_status(report, evidence, scenarios, approval, *, as_of, resource_root=None):
+    subject = review_subject(report, evidence, scenarios, resource_root=resource_root, as_of=as_of)
     latest = _day(as_of)
     if latest > date.today():
         raise ValueError("FUTURE_REFERENCE_DATE")
@@ -116,3 +121,9 @@ def review_status(report, evidence, scenarios, approval, *, as_of):
     earliest = max((_day(r["reviewed_on"]) for r in evidence), default=latest)
     _approval(approval, digest(subject), earliest, latest)
     return dict(subject, financial_review_status="attested", reviewer=approval["reviewer"], reviewed_on=approval["reviewed_on"])
+
+
+def automatic_promotion_plan(*args, **kwargs):
+    """Explicit machine-review entry point; human promotion remains unchanged."""
+    from .review_integration import automatic_promotion_plan as build
+    return build(*args, **kwargs)

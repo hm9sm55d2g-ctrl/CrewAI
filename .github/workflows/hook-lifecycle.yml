@@ -1,7 +1,7 @@
 name: Real hook lifecycle without LLM
 on:
   push:
-    branches: [test/amp-hook-lifecycle]
+    branches: [test/amp-hook-lifecycle, feat/autonomous-evidence-pipeline]
   pull_request:
     paths:
       - scripts/test_hook_lifecycle.py

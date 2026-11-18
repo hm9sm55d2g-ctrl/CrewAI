@@ -62,13 +62,35 @@ class AuditModuleIntegrationTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as out:
             with self.assertLogs("analisti_2027.audit", level="WARNING") as captured:
                 context, bound, final = self.pipeline()
-        payloads = self.assert_channels(out, captured, ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "INTEGRATION_AUDIT"])
+        expected_channels = ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "FINANCIAL_REVIEW_AUDIT", "INTEGRATION_AUDIT"]
+        payloads = self.assert_channels(out, captured, expected_channels)
+        # Index: 0=REPORT_BINDING, 1=QUALITY, 2=FINANCIAL_REVIEW, 3=INTEGRATION
         audit = payloads[1]
         self.assertTrue(audit["checks_passed"])
         self.assertFalse(audit["financially_validated"])
         self.assertEqual(audit["report_sha256"], hashlib.sha256(final.raw.encode("utf-8")).hexdigest())
         self.assertEqual(audit["temporal_window"]["end"], "2026-11-10")
-        saved = json.loads(Path(payloads[2]["artifact"]).read_text(encoding="utf-8"))
+        # FINANCIAL_REVIEW_AUDIT explicit assertions
+        fr = payloads[2]
+        self.assertEqual(fr["financial_review_status"], "pending_final_approval")
+        self.assertFalse(fr["financially_validated"])
+        self.assertEqual(fr["as_of"], context["as_of"])
+        self.assertEqual(fr["input_sha256"], context["input_sha256"])
+        self.assertEqual(fr["report_sha256"], hashlib.sha256(final.raw.encode("utf-8")).hexdigest())
+        self.assertEqual(fr["evidence_sha256"], hashlib.sha256(json.dumps(context["evidence_records"], ensure_ascii=False, sort_keys=True, allow_nan=False).encode("utf-8")).hexdigest())
+        self.assertIn("subject_sha256", fr)
+        self.assertEqual(fr["evidence_review_counts"], {"human": 0, "automated": 0})
+        # artifact field present and points to written file
+        self.assertIn("artifact", fr)
+        fr_artifact_path = Path(fr["artifact"])
+        self.assertTrue(fr_artifact_path.is_file())
+        fr_saved = json.loads(fr_artifact_path.read_text(encoding="utf-8"))
+        self.assertEqual(fr_saved["financial_review"], {k: v for k, v in fr.items() if k != "artifact"})
+        self.assertEqual(fr_saved["context"], context)
+        self.assertEqual(fr_saved["bound_report_before_numeric_table"], bound.raw)
+        self.assertEqual(fr_saved["final_report"], final.raw)
+        # INTEGRATION_AUDIT (now at index 3)
+        saved = json.loads(Path(payloads[3]["artifact"]).read_text(encoding="utf-8"))
         self.assertEqual(saved["final_report"], final.raw)
         self.assertEqual(saved["bound_report_before_numeric_table"], bound.raw)
         self.assertEqual(saved["context"], context)
@@ -140,13 +162,16 @@ class AuditModuleIntegrationTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as out:
             with self.assertLogs("analisti_2027.audit", level="WARNING") as captured:
                 context, bound, final = self.pipeline(bundle, compare_fn=engine)
-        records = self.assert_channels(out, captured, ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "INTEGRATION_AUDIT"])
+        expected_channels = ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "FINANCIAL_REVIEW_AUDIT", "INTEGRATION_AUDIT"]
+        records = self.assert_channels(out, captured, expected_channels)
+        # Index: 0=REPORT_BINDING, 1=QUALITY, 2=FINANCIAL_REVIEW, 3=INTEGRATION
         section = c.split_sections(final.raw)[5]
         self.assertEqual(len([line for line in section.splitlines() if line.startswith("|H1|")]), 13)
         self.assertEqual(context["numeric_results"]["H1"], payload)
         self.assertEqual(bundle, original)
         self.assertIn("- H2: ND: scenario non fornito", section)
         self.assertIn("- H10: ND: scenario non fornito", section)
+        # QUALITY_AUDIT at index 1
         self.assertEqual(records[1]["report_sha256"], hashlib.sha256(final.raw.encode()).hexdigest())
 
     def test_silencing_emitter_does_not_change_final_report(self):
@@ -170,14 +195,16 @@ class AuditModuleIntegrationTests(unittest.TestCase):
 
     def test_repeated_runs_have_distinct_artifacts_and_correct_hashes(self):
         artifacts = []
+        expected_channels = ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "FINANCIAL_REVIEW_AUDIT", "INTEGRATION_AUDIT"]
         for number in range(2):
             self.draft.raw = self.draft.raw.replace("revisione aggiuntiva", "revisione") if number == 0 else self.draft.raw.replace("fixture sintetica", "fixture sintetica revisione aggiuntiva")
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 with self.assertLogs("analisti_2027.audit", level="WARNING") as captured:
                     _, _, final = self.pipeline()
-            records = self.assert_channels(out, captured, ["REPORT_BINDING_AUDIT", "QUALITY_AUDIT", "INTEGRATION_AUDIT"])
+            records = self.assert_channels(out, captured, expected_channels)
+            # Index: 0=REPORT_BINDING, 1=QUALITY, 2=FINANCIAL_REVIEW, 3=INTEGRATION
             self.assertEqual(records[1]["report_sha256"], hashlib.sha256(final.raw.encode()).hexdigest())
-            artifacts.append(records[2]["artifact"])
+            artifacts.append(records[3]["artifact"])
         self.assertNotEqual(artifacts[0], artifacts[1])
         self.assertEqual(len(list((self.root / "integration").glob("*.json"))), 2)
 
