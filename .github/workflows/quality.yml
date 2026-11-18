@@ -33,7 +33,7 @@ jobs:
           PYTHONPATH: src
         run: |
           mkdir -p test-results
-          .venv/bin/python -m pytest tests/test_scenario_matrix.py \
+          .venv/bin/python -m pytest tests/test_scenario_matrix.py tests/test_research_response.py \
             -v --strict-config --strict-markers \
             --junitxml=test-results/scenario-matrix.xml
       - name: Save pytest JUnit report
