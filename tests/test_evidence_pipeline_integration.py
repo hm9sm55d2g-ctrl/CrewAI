@@ -707,7 +707,7 @@ class EvidencePipelineIntegrationTests(unittest.TestCase):
     def test_absolute_path_rejected(self):
         """Absolute paths in candidate or artifact paths are rejected."""
         bad_candidate = copy.deepcopy(self.candidate)
-        bad_candidate["snapshot_path"] = "C:\\Windows\\system32\\drivers\\etc\\hosts"
+        bad_candidate["snapshot_path"] = str(Path(tempfile.gettempdir()).resolve() / "outside_root.txt")
 
         with self.assertRaisesRegex(ValueError, "PATH_OUTSIDE_ROOT"):
             self._run_full_cycle(candidates_data=[{
